@@ -43,42 +43,57 @@ class Arbol:
         Red social -> Feed / Comunidad / Seguridad, cada rama con sus nodos
         fijos e interactivos. Los costos y efectos numéricos son un punto de
         partida provisional, se calibran jugando."""
-        raiz = Nodo("red_social", "Red social", "fijo", costo=0)
+        raiz = Nodo("red_social", "Red social", "fijo", costo=0,
+                     descripcion="El punto de partida de tu plataforma. No tiene costo, se desbloquea automáticamente.")
 
         # --- Feed ---
-        feed = Nodo("feed", "Feed", "fijo", costo=0)
+        feed = Nodo("feed", "Feed", "fijo", costo=0,
+                     descripcion="Categoría de funcionalidades relacionadas al feed principal de contenido.")
         basico = Nodo("feed_basico", "Básico", "fijo", costo=2000,
-                       efectos={"crecimiento": 0.02})
+                       efectos={"crecimiento": 0.02},
+                       descripcion="Feed simple sin personalización. Efecto fijo: +2% de crecimiento pasivo por ronda.")
         scroll_infinito = Nodo("feed_scroll", "Scroll infinito", "interruptor", costo=3000,
-                                efectos={"crecimiento": 0.05, "engagement": 0.08, "bienestar": -4})
+                                efectos={"crecimiento": 0.05, "engagement": 0.08, "bienestar": -4},
+                                descripcion="Interruptor: mientras esté encendido, sube crecimiento y engagement, "
+                                            "pero baja el bienestar cada ronda que sigue activo.")
         algoritmo = Nodo("feed_algoritmo", "Algoritmo", "dial", costo=5000,
-                          efectos={"usuarios": 300, "engagement": 0.1, "bienestar": -6})
+                          efectos={"usuarios": 300, "engagement": 0.1, "bienestar": -6},
+                          descripcion="Dial de agresividad (0-100): entre más alto, más usuarios y engagement, "
+                                      "pero más baja el bienestar.")
         feed.agregar_hijo(basico)
         feed.agregar_hijo(scroll_infinito)
         feed.agregar_hijo(algoritmo)
 
         # --- Comunidad ---
-        comunidad = Nodo("comunidad", "Comunidad", "fijo", costo=0)
+        comunidad = Nodo("comunidad", "Comunidad", "fijo", costo=0,
+                          descripcion="Categoría de funcionalidades relacionadas a la comunidad de usuarios.")
         grupos = Nodo("comunidad_grupos", "Grupos", "fijo", costo=3000,
-                       efectos={"bienestar": 2})
+                       efectos={"bienestar": 2},
+                       descripcion="Efecto fijo: mejora el bienestar y reduce la fuga de usuarios en eventos negativos.")
         mensajes = Nodo("comunidad_mensajes", "Mensajes", "bifurcacion", costo=4000, variantes={
             "cifrado": {"efectos": {"reputacion": 5, "bienestar": 3, "crecimiento": -0.01}},
             "abierta": {"efectos": {"crecimiento": 0.03, "bienestar": -2}},
-        })
+        }, descripcion="Bifurcación: cifrado extremo a extremo (más privado, más caro) o mensajería abierta "
+                       "(más barata, más riesgo de acoso).")
         verificacion_paga = Nodo("comunidad_verificacion", "Verificación paga", "interruptor", costo=4000,
-                                  efectos={"dinero": 500, "bienestar": -3, "reputacion": -2})
+                                  efectos={"dinero": 500, "bienestar": -3, "reputacion": -2},
+                                  descripcion="Interruptor: mientras esté encendida, genera dinero recurrente, "
+                                              "pero baja bienestar y reputación.")
         comunidad.agregar_hijo(grupos)
         comunidad.agregar_hijo(mensajes)
         comunidad.agregar_hijo(verificacion_paga)
 
         # --- Seguridad ---
-        seguridad = Nodo("seguridad", "Seguridad", "fijo", costo=0)
+        seguridad = Nodo("seguridad", "Seguridad", "fijo", costo=0,
+                          descripcion="Categoría de funcionalidades relacionadas a la seguridad y moderación.")
         basica = Nodo("seguridad_basica", "Básica", "fijo", costo=2500,
-                       efectos={"reputacion": 3, "bienestar": 2})
+                       efectos={"reputacion": 3, "bienestar": 2},
+                       descripcion="Efecto fijo: mejora reputación y bienestar.")
         avanzada = Nodo("seguridad_avanzada", "Avanzada", "bifurcacion", costo=4500, variantes={
             "humana": {"efectos": {"bienestar": 5, "reputacion": 4, "dinero": -300}},
             "automatica": {"efectos": {"bienestar": 1, "reputacion": 1}},
-        })
+        }, descripcion="Bifurcación: moderación humana (cara, más efectiva) o filtros automáticos "
+                       "(baratos, imperfectos).")
         seguridad.agregar_hijo(basica)
         seguridad.agregar_hijo(avanzada)
 

@@ -16,10 +16,10 @@ COLOR_BOTON = (60, 150, 130)
 COLOR_TEXTO = (255, 255, 255)
 COLOR_BOTON_VOLVER = (70, 70, 75)
 
-RECT_BOTON_ARBOL = pygame.Rect(60, 350, 160, 44)
-RECT_BOTON_MAPA = pygame.Rect(480, 350, 160, 44)
+RECT_BOTON_ARBOL = pygame.Rect(90, 350, 160, 44)
+RECT_BOTON_MAPA = pygame.Rect(610, 350, 160, 44)
 RECT_BOTON_VOLVER = pygame.Rect(15, 15, 90, 30)  # usado en Árbol y Mapa para volver a Principal
-RECT_AREA_MINIJUEGO = pygame.Rect(60, 70, 580, 250)
+RECT_AREA_MINIJUEGO = pygame.Rect(90, 70, 680, 250)
 
 
 def dibujar_principal(pantalla, fuente, fuente_boton, recursos):

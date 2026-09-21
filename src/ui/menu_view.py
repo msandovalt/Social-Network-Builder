@@ -14,10 +14,10 @@ COLOR_BOTON_START = (60, 150, 130)
 COLOR_BOTON_SALIR = (150, 70, 70)
 COLOR_BOTON_TEXTO = (255, 255, 255)
 
-RECT_BOTON_START = pygame.Rect(270, 220, 160, 50)
-RECT_BOTON_PAUSA = pygame.Rect(650, 15, 30, 30)       # esquina superior derecha, durante el juego
-RECT_BOTON_REANUDAR = pygame.Rect(270, 180, 160, 50)
-RECT_BOTON_SALIR = pygame.Rect(270, 250, 160, 50)
+RECT_BOTON_START = pygame.Rect(350, 220, 160, 50)
+RECT_BOTON_PAUSA = pygame.Rect(810, 15, 30, 30)       # esquina superior derecha, durante el juego
+RECT_BOTON_REANUDAR = pygame.Rect(350, 180, 160, 50)
+RECT_BOTON_SALIR = pygame.Rect(350, 250, 160, 50)
 
 
 def dibujar_menu(pantalla, fuente_titulo, fuente_boton):
