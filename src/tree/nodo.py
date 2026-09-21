@@ -17,7 +17,7 @@ TIPOS_CONTROL = ("fijo", "interruptor", "dial", "bifurcacion")
 
 
 class Nodo:
-    def __init__(self, id_nodo, nombre, tipo_control, costo, efectos=None, variantes=None):
+    def __init__(self, id_nodo, nombre, tipo_control, costo, efectos=None, variantes=None, descripcion=""):
         if tipo_control not in TIPOS_CONTROL:
             raise ValueError(f"tipo_control inválido: {tipo_control}")
 
@@ -25,6 +25,7 @@ class Nodo:
         self.nombre = nombre
         self.tipo_control = tipo_control
         self.costo = costo
+        self.descripcion = descripcion
 
         # Estado de progresión
         self.desbloqueado = False
