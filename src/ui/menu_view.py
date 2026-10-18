@@ -1,56 +1,85 @@
 """
-Pantallas de menú inicial y pausa.
+Pantallas de menú inicial, pausa y fin de partida.
 
-Mantiene el mismo estilo simple del árbol preliminar; el objetivo aquí es
-dar estructura al flujo del juego (menú -> jugando -> pausa), no la
-estética final.
+Todas usan el tema compartido (fondo animado, paneles, botones con hover).
 """
+
+import math
 
 import pygame
 
-COLOR_FONDO = (25, 25, 30)
-COLOR_TITULO = (255, 255, 255)
-COLOR_BOTON_START = (60, 150, 130)
-COLOR_BOTON_SALIR = (150, 70, 70)
-COLOR_BOTON_TEXTO = (255, 255, 255)
+from ui import tema
+from ui.tema import ANCHO, ALTO
+from ui.resumen_view import (
+    dibujar_fin,
+    UMBRAL_BIENESTAR_SANO,
+    MENSAJE_VICTORIA_SANA,
+    MENSAJE_VICTORIA_BAJO_BIENESTAR,
+    MENSAJE_EXODO_BIENESTAR,
+    MOTIVOS_FIN,
+)
 
-RECT_BOTON_START = pygame.Rect(350, 220, 160, 50)
-RECT_BOTON_PAUSA = pygame.Rect(810, 15, 30, 30)       # esquina superior derecha, durante el juego
-RECT_BOTON_REANUDAR = pygame.Rect(350, 180, 160, 50)
-RECT_BOTON_SALIR = pygame.Rect(350, 250, 160, 50)
+_X_BOTON = ANCHO // 2 - 130
 
-
-def dibujar_menu(pantalla, fuente_titulo, fuente_boton):
-    pantalla.fill(COLOR_FONDO)
-
-    titulo = fuente_titulo.render("Social Network Builder", True, COLOR_TITULO)
-    pantalla.blit(titulo, titulo.get_rect(center=(pantalla.get_width() // 2, 120)))
-
-    pygame.draw.rect(pantalla, COLOR_BOTON_START, RECT_BOTON_START, border_radius=8)
-    texto = fuente_boton.render("Start", True, COLOR_BOTON_TEXTO)
-    pantalla.blit(texto, texto.get_rect(center=RECT_BOTON_START.center))
-
-
-def dibujar_boton_pausa(pantalla, fuente):
-    pygame.draw.rect(pantalla, (70, 70, 75), RECT_BOTON_PAUSA, border_radius=4)
-    texto = fuente.render("II", True, (255, 255, 255))
-    pantalla.blit(texto, texto.get_rect(center=RECT_BOTON_PAUSA.center))
+RECT_BOTON_START = pygame.Rect(_X_BOTON, 400, 260, 64)
+RECT_BOTON_AYUDA_MENU = pygame.Rect(_X_BOTON, 480, 260, 56)
+RECT_BOTON_ACCESIBILIDAD_MENU = pygame.Rect(_X_BOTON, 548, 260, 56)
+RECT_BOTON_PAUSA = pygame.Rect(ANCHO - 24 - 48, 16, 48, 48)         # esquina superior derecha, durante el juego
+RECT_BOTON_AYUDA_JUEGO = pygame.Rect(ANCHO - 24 - 48 - 12 - 48, 16, 48, 48)  # a la izquierda de la pausa
+RECT_BOTON_REANUDAR = pygame.Rect(_X_BOTON, 300, 260, 58)
+RECT_BOTON_AYUDA_PAUSA = pygame.Rect(_X_BOTON, 366, 260, 58)
+RECT_BOTON_ACCESIBILIDAD_PAUSA = pygame.Rect(_X_BOTON, 432, 260, 58)
+RECT_BOTON_SALIR_PAUSA = pygame.Rect(_X_BOTON, 498, 260, 58)
+RECT_BOTON_SALIR = pygame.Rect(_X_BOTON, 374, 260, 58)              # pantalla de fin de partida (compatibilidad)
+RECT_BOTON_NUEVA = pygame.Rect(_X_BOTON, 300, 260, 58)              # pantalla de fin de partida (compatibilidad)
 
 
-def dibujar_pausa(pantalla, fuente_titulo, fuente_boton):
+def dibujar_menu(pantalla, fuentes, t):
+    tema.dibujar_fondo(pantalla, t)
+
+    flotar = math.sin(t * 1.5) * 4
+    tema.dibujar_texto(pantalla, fuentes.titulo, "Social Network Builder", tema.COLOR_TEXTO,
+                       center=(ANCHO // 2, 240 + flotar))
+    tema.dibujar_texto(pantalla, fuentes.normal, "Construye tu red social. Cuida a tus usuarios.",
+                       tema.COLOR_TEXTO_SEC, center=(ANCHO // 2, 310))
+
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_START, "Jugar", tema.COLOR_ACENTO, radio=16)
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_AYUDA_MENU, "Ayuda", tema.COLOR_PANEL_CLARO, radio=16)
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_ACCESIBILIDAD_MENU, "Accesibilidad",
+                       tema.COLOR_PANEL_CLARO, radio=16)
+    tema.dibujar_texto(pantalla, fuentes.pequena, "Esc para pausar   ·   M para silenciar audio", tema.COLOR_TEXTO_SEC,
+                       center=(ANCHO // 2, ALTO - 40))
+
+
+def dibujar_boton_pausa(pantalla, fuentes):
+    rect = RECT_BOTON_PAUSA
+    color = tema.aclarar(tema.COLOR_PANEL_CLARO, 0.15) if tema.esta_encima(rect) else tema.COLOR_PANEL_CLARO
+    pygame.draw.rect(pantalla, color, rect, border_radius=12)
+    pygame.draw.rect(pantalla, tema.COLOR_BORDE, rect, width=2, border_radius=12)
+    for dx in (-10, 4):
+        barra = pygame.Rect(rect.centerx + dx, rect.centery - 10, 6, 20)
+        pygame.draw.rect(pantalla, tema.COLOR_TEXTO, barra, border_radius=2)
+
+
+def dibujar_boton_ayuda(pantalla, fuentes):
+    """Botón "?" de la esquina superior, a la izquierda del de pausa."""
+    rect = RECT_BOTON_AYUDA_JUEGO
+    color = tema.aclarar(tema.COLOR_PANEL_CLARO, 0.15) if tema.esta_encima(rect) else tema.COLOR_PANEL_CLARO
+    pygame.draw.rect(pantalla, color, rect, border_radius=12)
+    pygame.draw.rect(pantalla, tema.COLOR_BORDE, rect, width=2, border_radius=12)
+    tema.dibujar_texto(pantalla, fuentes.boton, "?", tema.COLOR_TEXTO, center=rect.center)
+
+
+def dibujar_pausa(pantalla, fuentes):
     """Se dibuja ENCIMA del estado del juego (que ya se dibujó antes),
     con un overlay semitransparente para que se note que está pausado."""
-    overlay = pygame.Surface(pantalla.get_size(), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 180))
-    pantalla.blit(overlay, (0, 0))
+    tema.dibujar_overlay(pantalla, 180)
+    panel = pygame.Rect(ANCHO // 2 - 200, 150, 400, 420)
+    tema.dibujar_panel(pantalla, panel, radio=22)
+    tema.dibujar_texto(pantalla, fuentes.subtitulo, "Pausado", tema.COLOR_TEXTO,
+                       center=(ANCHO // 2, 215))
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_REANUDAR, "Reanudar", tema.COLOR_ACENTO)
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_AYUDA_PAUSA, "Ayuda", tema.COLOR_PANEL_CLARO)
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_ACCESIBILIDAD_PAUSA, "Accesibilidad", tema.COLOR_PANEL_CLARO)
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_SALIR_PAUSA, "Salir", tema.COLOR_BOTON_PELIGRO)
 
-    titulo = fuente_titulo.render("Pausado", True, (255, 255, 255))
-    pantalla.blit(titulo, titulo.get_rect(center=(pantalla.get_width() // 2, 130)))
-
-    pygame.draw.rect(pantalla, COLOR_BOTON_START, RECT_BOTON_REANUDAR, border_radius=8)
-    texto_reanudar = fuente_boton.render("Reanudar", True, COLOR_BOTON_TEXTO)
-    pantalla.blit(texto_reanudar, texto_reanudar.get_rect(center=RECT_BOTON_REANUDAR.center))
-
-    pygame.draw.rect(pantalla, COLOR_BOTON_SALIR, RECT_BOTON_SALIR, border_radius=8)
-    texto_salir = fuente_boton.render("Salir", True, COLOR_BOTON_TEXTO)
-    pantalla.blit(texto_salir, texto_salir.get_rect(center=RECT_BOTON_SALIR.center))

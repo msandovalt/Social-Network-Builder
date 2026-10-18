@@ -1,188 +1,40 @@
 """
 Punto de entrada del juego.
 
-Flujo de pantallas: Menú -> Principal (hub) -> Árbol / Mapa, con Pausa
-disponible desde cualquiera de las tres últimas. La pantalla Principal es
-el hub del juego: muestra los recursos, la tragamonedas (minijuego de
-habilidad que genera dinero/usuarios/reputación) y da acceso a los paneles
-de Árbol y Mapa.
+Solo inicializa Pygame y corre el loop principal; todo el estado y el flujo
+de pantallas (Menú -> Principal -> Árbol / Mapa, Pausa, Fin) vive en
+`juego.Juego`, y el aspecto visual en `ui/`.
+
+La ventana es de 1280x720 con `pygame.SCALED`: Pygame la escala sola si la
+pantalla es más chica y traduce las coordenadas del mouse, así que el resto
+del código siempre trabaja en 1280x720.
 """
 
 import pygame
 
-from tree.arbol import Arbol
-from tree.recursos import Recursos
-from tree.nodo import Nodo  # noqa: F401  (import usado indirectamente vía Arbol)
-from minijuego.tragamonedas import Tragamonedas, GIRANDO, POR_RESOLVER, RESUELTO, INACTIVO
+from ajustes import Ajustes
+from juego import Juego, crear_fuentes
+from ui.tema import ANCHO, ALTO
 
-from ui.tree_view import dibujar_arbol, nodo_en_posicion
-from ui.nodo_detalle_view import (
-    dibujar_panel_detalle, evaluar_estado,
-    RECT_BOTON_COMPRAR, RECT_BOTON_CANCELAR, RECT_BOTON_CERRAR,
-)
-from ui.menu_view import (
-    dibujar_menu, dibujar_boton_pausa, dibujar_pausa,
-    RECT_BOTON_START, RECT_BOTON_PAUSA, RECT_BOTON_REANUDAR, RECT_BOTON_SALIR,
-)
-from ui.hub_view import (
-    dibujar_principal, dibujar_boton_volver, dibujar_mapa_placeholder,
-    RECT_BOTON_ARBOL, RECT_BOTON_MAPA, RECT_BOTON_VOLVER,
-)
-from ui.tragamonedas_view import dibujar_tragamonedas, RECTS_REEL, RECT_BOTON_ACCION
-
-ANCHO, ALTO = 860, 420
 FPS = 60
-
-MENU = "menu"
-PRINCIPAL = "principal"
-ARBOL = "arbol"
-MAPA = "mapa"
-PAUSA = "pausa"
-
-TECLAS_REEL = {pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2}
-
-
-def dibujar_fondo_juego(pantalla, estado, arbol, recursos, maquina, fuente, fuente_boton, fuente_titulo,
-                         fuente_simbolo, fuente_arbol, nodo_seleccionado=None):
-    """Dibuja Principal, Árbol o Mapa. Se usa tanto para el estado activo
-    como para el fondo congelado que se ve detrás del overlay de pausa."""
-    if estado == PRINCIPAL:
-        dibujar_principal(pantalla, fuente, fuente_boton, recursos)
-        dibujar_tragamonedas(pantalla, fuente, fuente_boton, fuente_simbolo, maquina, recursos)
-    elif estado == ARBOL:
-        pantalla.fill((25, 25, 30))
-        dibujar_arbol(pantalla, arbol, fuente_arbol)
-        dibujar_boton_volver(pantalla, fuente_boton)
-        if nodo_seleccionado is not None:
-            dibujar_panel_detalle(pantalla, fuente, fuente_boton, nodo_seleccionado, recursos)
-    elif estado == MAPA:
-        dibujar_mapa_placeholder(pantalla, fuente_titulo)
-        dibujar_boton_volver(pantalla, fuente_boton)
-
-
-def manejar_click_tragamonedas(maquina, recursos, pos):
-    for i, rect in enumerate(RECTS_REEL):
-        if rect.collidepoint(pos) and maquina.estado == GIRANDO:
-            maquina.detener(i)
-            return
-
-    if RECT_BOTON_ACCION.collidepoint(pos):
-        if maquina.estado == INACTIVO:
-            maquina.iniciar(recursos)
-        elif maquina.estado == RESUELTO:
-            maquina.reiniciar()
 
 
 def main():
     pygame.init()
-    pantalla = pygame.display.set_mode((ANCHO, ALTO))
+    pantalla = pygame.display.set_mode((ANCHO, ALTO), pygame.SCALED | pygame.RESIZABLE)
     pygame.display.set_caption("Social Network Builder")
     reloj = pygame.time.Clock()
-    fuente = pygame.font.SysFont(None, 20)
-    fuente_titulo = pygame.font.SysFont(None, 36)
-    fuente_boton = pygame.font.SysFont(None, 24)
-    fuente_simbolo = pygame.font.SysFont(None, 40)
-    fuente_arbol = pygame.font.SysFont(None, 16)  # las cajas del árbol son más angostas
 
-    arbol = Arbol.construir_arbol_inicial()
-    recursos = Recursos()
-    maquina = Tragamonedas()
+    juego = Juego(pantalla, crear_fuentes(), Ajustes())  # Ajustes recuerda la paleta elegida
 
-    estado = MENU
-    estado_antes_pausa = None
-    nodo_seleccionado = None
-    corriendo = True
-
-    while corriendo:
+    while juego.corriendo:
         dt = reloj.tick(FPS) / 1000.0
 
         for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
-                corriendo = False
+            juego.manejar_evento(evento)
 
-            elif evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_ESCAPE:
-                    if estado == ARBOL and nodo_seleccionado is not None:
-                        nodo_seleccionado = None
-                    elif estado in (PRINCIPAL, ARBOL, MAPA):
-                        estado_antes_pausa = estado
-                        estado = PAUSA
-                    elif estado == PAUSA:
-                        estado = estado_antes_pausa
-                elif estado == PRINCIPAL and evento.key in TECLAS_REEL:
-                    if maquina.estado == GIRANDO:
-                        maquina.detener(TECLAS_REEL[evento.key])
-
-            elif evento.type == pygame.MOUSEBUTTONDOWN:
-                if estado == MENU:
-                    if RECT_BOTON_START.collidepoint(evento.pos):
-                        estado = PRINCIPAL
-
-                elif estado == PRINCIPAL:
-                    if RECT_BOTON_PAUSA.collidepoint(evento.pos):
-                        estado_antes_pausa = PRINCIPAL
-                        estado = PAUSA
-                    elif RECT_BOTON_ARBOL.collidepoint(evento.pos):
-                        estado = ARBOL
-                    elif RECT_BOTON_MAPA.collidepoint(evento.pos):
-                        estado = MAPA
-                    else:
-                        manejar_click_tragamonedas(maquina, recursos, evento.pos)
-
-                elif estado == ARBOL:
-                    if nodo_seleccionado is not None:
-                        estado_panel = evaluar_estado(nodo_seleccionado, recursos)
-                        if estado_panel == "disponible":
-                            if RECT_BOTON_COMPRAR.collidepoint(evento.pos):
-                                nodo_seleccionado.desbloquear(recursos)
-                                nodo_seleccionado = None
-                            elif RECT_BOTON_CANCELAR.collidepoint(evento.pos):
-                                nodo_seleccionado = None
-                        else:
-                            if RECT_BOTON_CERRAR.collidepoint(evento.pos):
-                                nodo_seleccionado = None
-                    elif RECT_BOTON_PAUSA.collidepoint(evento.pos):
-                        estado_antes_pausa = ARBOL
-                        estado = PAUSA
-                    elif RECT_BOTON_VOLVER.collidepoint(evento.pos):
-                        estado = PRINCIPAL
-                    else:
-                        nodo = nodo_en_posicion(arbol, evento.pos)
-                        if nodo:
-                            nodo_seleccionado = nodo
-
-                elif estado == MAPA:
-                    if RECT_BOTON_PAUSA.collidepoint(evento.pos):
-                        estado_antes_pausa = MAPA
-                        estado = PAUSA
-                    elif RECT_BOTON_VOLVER.collidepoint(evento.pos):
-                        estado = PRINCIPAL
-
-                elif estado == PAUSA:
-                    if RECT_BOTON_REANUDAR.collidepoint(evento.pos):
-                        estado = estado_antes_pausa
-                    elif RECT_BOTON_SALIR.collidepoint(evento.pos):
-                        corriendo = False
-
-        if estado == PRINCIPAL:
-            maquina.actualizar(dt)
-            if maquina.estado == POR_RESOLVER:
-                maquina.resolver(recursos)
-
-        if estado == MENU:
-            dibujar_menu(pantalla, fuente_titulo, fuente_boton)
-
-        elif estado == PAUSA:
-            dibujar_fondo_juego(pantalla, estado_antes_pausa, arbol, recursos, maquina,
-                                 fuente, fuente_boton, fuente_titulo, fuente_simbolo, fuente_arbol)
-            dibujar_boton_pausa(pantalla, fuente)
-            dibujar_pausa(pantalla, fuente_titulo, fuente_boton)
-
-        else:  # PRINCIPAL, ARBOL o MAPA
-            dibujar_fondo_juego(pantalla, estado, arbol, recursos, maquina,
-                                 fuente, fuente_boton, fuente_titulo, fuente_simbolo, fuente_arbol, nodo_seleccionado)
-            dibujar_boton_pausa(pantalla, fuente)
-
+        juego.actualizar(dt)
+        juego.dibujar()
         pygame.display.flip()
 
     pygame.quit()

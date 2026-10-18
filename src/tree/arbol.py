@@ -24,9 +24,23 @@ class Arbol:
             cola.extend(nodo.hijos)
         return visitados
 
+    def nodo_por_id(self, id_nodo):
+        """Busca un nodo por su id. Lanza KeyError si no existe."""
+        for nodo in self.recorrido_bfs():
+            if nodo.id == id_nodo:
+                return nodo
+        raise KeyError(id_nodo)
+
     def nodos_disponibles(self, recursos):
         """Nodos que el jugador podría desbloquear ahora mismo."""
         return [n for n in self.recorrido_bfs() if n.puede_desbloquearse(recursos)]
+
+    def desbloquear_gratuitos(self, recursos):
+        """Desbloquea automáticamente los nodos de costo 0 (la raíz y las
+        categorías), de arriba hacia abajo. Se llama al empezar la partida."""
+        for nodo in self.recorrido_bfs():
+            if nodo.costo == 0:
+                nodo.desbloquear(recursos)
 
     def efectos_totales_de_la_ronda(self):
         """Suma los efectos por ronda de todos los nodos activos

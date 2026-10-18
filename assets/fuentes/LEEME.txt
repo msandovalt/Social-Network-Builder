@@ -1,0 +1,5 @@
+Fuente propia (opcional)
+------------------------
+Si copias aquí un archivo .ttf con el nombre "principal.ttf", el juego lo usa
+en toda la interfaz. Si no existe, se usa una fuente común del sistema
+(Segoe UI, Helvetica, Arial o DejaVu Sans).
