@@ -53,13 +53,13 @@ verifican que nada se superponga ni se salga de la pantalla).
 1. En **Principal** ves tus recursos (dinero, usuarios, bienestar, reputación
    y engagement) y juegas a la **tragamonedas**: los carretes giran en vertical; detén cada uno
    con clic o con las teclas `1`, `2` y `3` (queda el símbolo que estaba al
-   centro). Si alineás tres símbolos iguales ganás
+   centro). Si alineas tres símbolos iguales ganas
    la recompensa. Entre más bajo el bienestar, más rápido giran.
 2. En **Árbol** haz clic en un nodo para ver su detalle y comprarlo. Los
    nodos interactivos dejan el panel abierto al comprarlos para configurarlos:
    - **Interruptor**: encendelo o apagalo; mientras esté encendido aplica su
      efecto cada ronda.
-   - **Dial**: ajustá su intensidad de 0 a 100 con `-` / `+`.
+   - **Dial**: ajusta su intensidad de 0 a 100 con `-` / `+`.
    - **Bifurcación**: elige una de las dos variantes.
 3. En **Mapa** ves el planeta como un grafo de 8 regiones. Empiezas en
    Sudamérica y solo puedes expandirte a regiones **vecinas** de las que ya
@@ -68,7 +68,7 @@ verifican que nada se superponga ni se salga de la pantalla).
    mínimos, y pagar la ruta. Al elegir una región lejana se resalta la **ruta más barata**
    hasta ella. Cada región conquistada aporta usuarios y dinero en cada ronda y
    **sube el máximo de usuarios** de tu red: sin expandirte, tu red deja de crecer.
-4. Cada **ronda** (10 segundos reales) se aplican los efectos del árbol, el ingreso de tus
+4. Cada **ronda** (10 segundos en tiempo real) se aplican los efectos del árbol, el ingreso de tus
    regiones y los
    usuarios crecen según la tasa de crecimiento. El tiempo no corre en el
    menú, en la pausa ni en la pantalla de fin.
