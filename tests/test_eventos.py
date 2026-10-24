@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import random
 
 from eventos.evento import Evento, CATALOGO, POSITIVO, NEGATIVO, ALERTA_BIENESTAR
-from eventos.gestor import GestorEventos, aplicar_evento, INTERVALO_EVENTOS
+from eventos.gestor import GestorEventos, aplicar_evento, INTERVALO_EVENTOS, INTERVALO_MIN, INTERVALO_MAX
 from mapa.mundo import Mundo
 from tree.arbol import Arbol
 from tree.recursos import Recursos
@@ -71,11 +71,13 @@ class TestCatalogo(unittest.TestCase):
 class TestTemporizador(unittest.TestCase):
     def setUp(self):
         self.arbol, self.recursos, self.mundo = partida()
-        self.gestor = GestorEventos(rng=random.Random(1))
+        self.gestor = GestorEventos(intervalo=30.0, rng=random.Random(1))
 
-    def test_el_intervalo_por_defecto_es_de_30_segundos(self):
+    def test_el_intervalo_por_defecto_es_aleatorio_entre_min_y_max(self):
+        gestor_defecto = GestorEventos(rng=random.Random(1))
         self.assertEqual(INTERVALO_EVENTOS, 30.0)
-        self.assertEqual(self.gestor.intervalo, 30.0)
+        self.assertGreaterEqual(gestor_defecto.intervalo, INTERVALO_MIN)
+        self.assertLessEqual(gestor_defecto.intervalo, INTERVALO_MAX)
 
     def test_no_hay_evento_antes_del_intervalo(self):
         self.assertIsNone(self.gestor.actualizar(29.9, self.arbol, self.recursos, self.mundo))
@@ -95,8 +97,15 @@ class TestTemporizador(unittest.TestCase):
 
     def test_los_eventos_siguen_ocurriendo_cada_intervalo(self):
         for _ in range(3):
-            self.gestor.actualizar(30.0, self.arbol, self.recursos, self.mundo)
+            self.gestor.actualizar(self.gestor.intervalo, self.arbol, self.recursos, self.mundo)
         self.assertEqual(len(self.gestor.historial), 3)
+
+    def test_al_disparar_evento_se_renueva_el_intervalo(self):
+        gestor = GestorEventos(rng=random.Random(5))
+        primer_intervalo = gestor.intervalo
+        gestor.actualizar(primer_intervalo, self.arbol, self.recursos, self.mundo)
+        self.assertGreaterEqual(gestor.intervalo, INTERVALO_MIN)
+        self.assertLessEqual(gestor.intervalo, INTERVALO_MAX)
 
 
 class TestSeleccion(unittest.TestCase):
@@ -106,6 +115,28 @@ class TestSeleccion(unittest.TestCase):
             gestor = GestorEventos(rng=random.Random(semilla))
             return [gestor.disparar(arbol, recursos, mundo).evento.id for _ in range(6)]
         self.assertEqual(secuencia(7), secuencia(7))
+
+    def test_bienestar_alto_favorece_eventos_positivos(self):
+        arbol, recursos, mundo = partida()
+        gestor = GestorEventos(rng=random.Random(42))
+        tonos = [gestor.elegir_evento(arbol, bienestar=90).tono for _ in range(300)]
+        positivos = tonos.count(POSITIVO)
+        self.assertGreater(positivos / len(tonos), 0.65)
+
+    def test_bienestar_bajo_favorece_eventos_negativos(self):
+        arbol, recursos, mundo = partida()
+        gestor = GestorEventos(rng=random.Random(42))
+        tonos = [gestor.elegir_evento(arbol, bienestar=10).tono for _ in range(300)]
+        negativos = tonos.count(NEGATIVO)
+        self.assertGreater(negativos / len(tonos), 0.65)
+
+    def test_disparar_con_recursos_usa_el_bienestar_automaticamente(self):
+        arbol, recursos, mundo = partida()
+        recursos.bienestar = 5
+        gestor = GestorEventos(rng=random.Random(42))
+        tonos = [gestor.disparar(arbol, recursos, mundo).evento.tono for _ in range(300)]
+        negativos = tonos.count(NEGATIVO)
+        self.assertGreater(negativos / len(tonos), 0.65)
 
     def test_no_repite_el_evento_anterior_si_hay_otra_opcion(self):
         arbol, recursos, mundo = partida()
