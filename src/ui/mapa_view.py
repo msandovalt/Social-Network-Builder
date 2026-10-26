@@ -21,26 +21,30 @@ from ui import tema
 from ui.animacion import pulso
 from ui.formato import formato_numero, formatear_efectos
 from ui.hub_view import dibujar_base
+from ui.modelos_2d import CONTINENTES_DETALLADOS_2D, dibujar_modelo_mapa_2d
 from mapa.mundo import CONQUISTADA, DISPONIBLE, BLOQUEADA, LEJANA
 
 RECT_MAPA = pygame.Rect(24, 136, 860, 560)
+RECT_OCEANO = pygame.Rect(42, 182, 824, 476)
 RECT_PANEL_REGION = pygame.Rect(904, 136, 352, 560)
 RECT_BOTON_EXPANDIR = pygame.Rect(924, 636, 312, 48)
 
-CENTRO_PLANETA = (454, 406)
+CENTRO_PLANETA = (454, 420)
 RADIO_PLANETA = 262
 RADIO_REGION = 34
 
 POSICIONES_REGION = {
-    "norteamerica": (304, 286),
-    "centroamerica": (258, 404),
-    "sudamerica": (344, 531),
-    "europa": (464, 256),
-    "africa": (470, 470),
-    "medio_oriente": (560, 370),
-    "asia": (616, 250),
-    "oceania": (650, 470),
+    "norteamerica": (185, 285),
+    "centroamerica": (165, 405),
+    "sudamerica": (268, 520),
+    "europa": (458, 252),
+    "africa": (452, 460),
+    "medio_oriente": (566, 356),
+    "asia": (702, 282),
+    "oceania": (770, 520),
 }
+
+_CONTINENTES_2D = CONTINENTES_DETALLADOS_2D
 
 TEXTOS_ESTADO = {
     CONQUISTADA: "Conquistada",
@@ -72,17 +76,42 @@ def region_en_posicion(mundo, pos):
     return None
 
 
-# --- planeta y rutas ------------------------------------------------------------
-def _dibujar_planeta(pantalla):
-    """Esfera hecha con círculos concéntricos que se desplazan hacia arriba a la
-    izquierda: da la sensación de luz y volumen."""
-    cx, cy = CENTRO_PLANETA
-    pasos = 14
-    salto = RADIO_PLANETA // pasos
-    for i in range(pasos):
-        color = tema.mezclar(tema.COLOR_FONDO_ARRIBA, tema.COLOR_PANEL_CLARO, i / (pasos - 1))
-        pygame.draw.circle(pantalla, color, (cx - i, cy - i), RADIO_PLANETA - i * salto)
-    pygame.draw.circle(pantalla, tema.COLOR_BORDE, CENTRO_PLANETA, RADIO_PLANETA, width=2)
+# --- mapa mundial 2D y rutas ----------------------------------------------------
+def _dibujar_planeta(pantalla, juego=None):
+    """Mapa mundial plano 2D con océano reticulado, plataforma continental,
+    relieve interior y siluetas continentales coloreadas según cada región."""
+    base_tierra = tema.mezclar(tema.COLOR_PANEL_CLARO, tema.COLOR_FONDO_ABAJO, 0.2)
+    mundo = getattr(juego, "mundo", None)
+    arbol = getattr(juego, "arbol", None)
+    recursos = getattr(juego, "recursos", None)
+    seleccion = getattr(juego, "region_seleccionada", None)
+
+    colores_por_region = {}
+    for id_region in _CONTINENTES_2D:
+        if mundo is not None and arbol is not None and recursos is not None and id_region in mundo.regiones:
+            estado = mundo.estado_region(id_region, arbol, recursos)
+        else:
+            estado = LEJANA
+
+        if estado == CONQUISTADA:
+            relleno = tema.mezclar(base_tierra, tema.COLOR_VERDE, 0.32)
+            costa = tema.mezclar(tema.COLOR_VERDE, tema.COLOR_CIAN, 0.35)
+        elif estado == DISPONIBLE:
+            relleno = tema.mezclar(base_tierra, tema.COLOR_AMARILLO, 0.22)
+            costa = tema.mezclar(tema.COLOR_BORDE, tema.COLOR_AMARILLO, 0.65)
+        elif estado == BLOQUEADA:
+            relleno = tema.mezclar(base_tierra, tema.COLOR_NARANJA, 0.16)
+            costa = tema.mezclar(tema.COLOR_BORDE, tema.COLOR_NARANJA, 0.45)
+        else:
+            relleno = base_tierra
+            costa = tema.aclarar(tema.COLOR_BORDE, 0.15)
+
+        if id_region == seleccion:
+            relleno = tema.aclarar(relleno, 0.16)
+            costa = tema.COLOR_TEXTO
+        colores_por_region[id_region] = (relleno, costa)
+
+    dibujar_modelo_mapa_2d(pantalla, RECT_OCEANO, colores_por_region, seleccion)
 
 
 def _etiqueta_costo(peso):
@@ -92,28 +121,40 @@ def _etiqueta_costo(peso):
 # Desplazamiento (t sobre el segmento a->b, dx, dy) para las pastillas de costo
 # que de otro modo chocarían con el nombre de una región vecina.
 _DESPLAZAMIENTO_PASTILLA = {
-    frozenset(("norteamerica", "centroamerica")): (0.35, -36, -6),
-    frozenset(("centroamerica", "sudamerica")): (0.58, -24, 6),
-    frozenset(("europa", "medio_oriente")): (0.62, 18, -8),
-    frozenset(("africa", "medio_oriente")): (0.30, 34, 10),
-    frozenset(("medio_oriente", "asia")): (0.42, -22, -8),
+    frozenset(("norteamerica", "centroamerica")): (0.35, -36, -4),
+    frozenset(("centroamerica", "sudamerica")): (0.62, -40, 18),
+    frozenset(("europa", "africa")): (0.52, -26, 0),
+    frozenset(("europa", "medio_oriente")): (0.52, 22, -12),
+    frozenset(("africa", "medio_oriente")): (0.32, 38, 22),
+    frozenset(("medio_oriente", "asia")): (0.50, -14, -12),
+    frozenset(("europa", "asia")): (0.50, 0, -16),
+    frozenset(("asia", "oceania")): (0.48, 26, 0),
 }
 
 
-def _dibujar_rutas(pantalla, fuentes, mundo, aristas_ruta):
+def _dibujar_rutas(pantalla, fuentes, mundo, aristas_ruta, t=0.0):
     pastillas = []
-    for a, b, peso in mundo.grafo.aristas():
+    for idx, (a, b, peso) in enumerate(mundo.grafo.aristas()):
         pa, pb = POSICIONES_REGION.get(a), POSICIONES_REGION.get(b)
         if pa is None or pb is None:
             continue
         par = frozenset((a, b))
+        activa = mundo.regiones[a].conquistada and mundo.regiones[b].conquistada
         if par in aristas_ruta:
-            color, grosor = tema.COLOR_AMARILLO, 6
-        elif mundo.regiones[a].conquistada and mundo.regiones[b].conquistada:
-            color, grosor = tema.mezclar(tema.COLOR_VERDE, tema.COLOR_PANEL, 0.45), 5
+            color, grosor = tema.COLOR_AMARILLO, 5
+        elif activa:
+            color, grosor = tema.mezclar(tema.COLOR_VERDE, tema.COLOR_CIAN, 0.35), 4
         else:
-            color, grosor = tema.COLOR_BORDE, 4
+            color, grosor = tema.COLOR_BORDE, 3
         pygame.draw.line(pantalla, color, pa, pb, grosor)
+
+        if activa or par in aristas_ruta:
+            frac = (t * 0.45 + idx * 0.23) % 1.0
+            qx = int(pa[0] + (pb[0] - pa[0]) * frac)
+            qy = int(pa[1] + (pb[1] - pa[1]) * frac)
+            color_pulso = tema.COLOR_AMARILLO if par in aristas_ruta else tema.COLOR_CIAN
+            pygame.draw.circle(pantalla, color_pulso, (qx, qy), 5)
+
         t_seg, dx, dy = _DESPLAZAMIENTO_PASTILLA.get(par, (0.5, 0, 0))
         # Aseguramos orden determinista (alfabético) para aplicar t_seg de forma consistente
         p1, p2 = (pa, pb) if a < b else (pb, pa)
@@ -172,8 +213,17 @@ def _dibujar_region(pantalla, fuentes, region, estado, centro, seleccionada, t):
     pygame.draw.circle(pantalla, color, centro, RADIO_REGION, width=4)
     _dibujar_icono_region(pantalla, estado, centro, relleno)
 
+    ancho_nom, alto_nom = fuentes.arbol.size(region.nombre)
+    etiqueta_rect = pygame.Rect(
+        centro[0] - ancho_nom // 2 - 8,
+        centro[1] + RADIO_REGION + 4,
+        ancho_nom + 16,
+        alto_nom + 4,
+    )
+    pygame.draw.rect(pantalla, tema.COLOR_FONDO_ARRIBA, etiqueta_rect, border_radius=8)
+    pygame.draw.rect(pantalla, color if seleccionada else tema.COLOR_BORDE, etiqueta_rect, width=1, border_radius=8)
     tema.dibujar_texto(pantalla, fuentes.arbol, region.nombre, tema.COLOR_TEXTO,
-                       midtop=(centro[0], centro[1] + RADIO_REGION + 6))
+                       center=etiqueta_rect.center)
 
 
 def _dibujar_leyenda(pantalla, fuentes):
@@ -315,15 +365,17 @@ def dibujar_mapa(pantalla, juego):
 
     dibujar_base(pantalla, juego, "Mapa de expansión")
     tema.dibujar_panel(pantalla, RECT_MAPA, radio=22)
-    _dibujar_planeta(pantalla)
+    _dibujar_planeta(pantalla, juego)
     tema.dibujar_texto(pantalla, fuentes.normal,
                        f"Regiones: {len(mundo.conquistadas())} / {len(mundo.regiones)}",
                        tema.COLOR_TEXTO, topleft=(RECT_MAPA.x + 22, RECT_MAPA.y + 16))
+    tema.dibujar_texto(pantalla, fuentes.arbol_pequena, "PROYECCIÓN GLOBAL 2D",
+                       tema.COLOR_CIAN, topright=(RECT_MAPA.right - 22, RECT_MAPA.y + 20))
 
     ruta = []
     if seleccion is not None and not mundo.regiones[seleccion].conquistada:
         _, ruta = mundo.ruta_mas_barata(seleccion)
-    _dibujar_rutas(pantalla, fuentes, mundo, {frozenset(par) for par in zip(ruta, ruta[1:])})
+    _dibujar_rutas(pantalla, fuentes, mundo, {frozenset(par) for par in zip(ruta, ruta[1:])}, juego.tiempo)
 
     for id_region, region in mundo.regiones.items():
         centro = POSICIONES_REGION.get(id_region)
