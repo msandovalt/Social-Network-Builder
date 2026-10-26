@@ -12,8 +12,10 @@ import pygame
 from audio import GestorAudio, RECETAS_SFX, sintetizar_pcm
 from ajustes import Ajustes
 from juego import Juego, PRINCIPAL
+from ui.audio_view import DURACION_INDICADOR_AUDIO, dibujar_indicador_audio
 from ui.menu_view import RECT_BOTON_START
 from ui.hub_view import RECT_BOTON_ARBOL
+from ui.tema import ALTO, ANCHO, crear_fuentes
 
 
 class TestSintesisProcedural(unittest.TestCase):
@@ -127,6 +129,21 @@ class TestIntegracionAudioEnJuego(unittest.TestCase):
             reabierto = Ajustes(ruta)
             self.assertTrue(reabierto.mute)
 
+    def test_mostrar_indicador_de_audio(self):
+        audio = GestorAudio(habilitar_mixer=False)
+        juego = Juego(audio=audio)
+        self.assertIsNone(juego.tiempo_indicador_audio)
+
+        juego.manejar_evento(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_m))
+        self.assertEqual(juego.tiempo_indicador_audio, 0.0)
+        self.assertTrue(juego.audio.mute)
+
+        juego.actualizar(DURACION_INDICADOR_AUDIO / 2)
+        self.assertIsNotNone(juego.tiempo_indicador_audio)
+
+        juego.actualizar(DURACION_INDICADOR_AUDIO)
+        self.assertIsNone(juego.tiempo_indicador_audio)
+
     def test_clics_de_navegacion_disparan_clic_ui(self):
         audio = GestorAudio(habilitar_mixer=False)
         juego = Juego(audio=audio)
@@ -140,6 +157,31 @@ class TestIntegracionAudioEnJuego(unittest.TestCase):
             pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=RECT_BOTON_ARBOL.center, button=1)
         )
         self.assertEqual(audio.historial.count("clic_ui"), 2)
+
+
+class TestIndicadorAudioVisual(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        pygame.font.init()
+        cls.fuentes = crear_fuentes()
+
+    def _capturar(self, silenciado, tiempo=0.5):
+        pantalla = pygame.Surface((ANCHO, ALTO))
+        pantalla.fill((0, 0, 0))
+        dibujar_indicador_audio(pantalla, self.fuentes, silenciado, tiempo)
+        return pantalla
+
+    def test_dibujar_estados_distintos(self):
+        activo = pygame.image.tobytes(self._capturar(False), "RGB")
+        silenciado = pygame.image.tobytes(self._capturar(True), "RGB")
+        self.assertNotEqual(activo, silenciado)
+
+    def test_aparece_y_desaparecer(self):
+        visible = self._capturar(False)
+        self.assertNotEqual(visible.get_at((ANCHO // 2, 45))[:3], (0, 0, 0))
+
+        desvanecido = self._capturar(False, tiempo=DURACION_INDICADOR_AUDIO)
+        self.assertEqual(desvanecido.get_at((ANCHO // 2, 45))[:3], (0, 0, 0))
 
 
 if __name__ == "__main__":
