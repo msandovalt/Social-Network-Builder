@@ -78,5 +78,5 @@ def dibujar_accesibilidad(pantalla, fuentes, seleccionada, t):
             x += TAM_MUESTRA + 8
 
     tema.dibujar_texto(pantalla, fuentes.pequena,
-                       "Además del color, el juego usa íconos y formas (marcas, flechas, candados) para que no dependas solo de él.",
+                       "El juego también usa íconos y formas (marcas, flechas, candados), no solo color.",
                        tema.COLOR_TEXTO_SEC, midtop=(ANCHO // 2, Y_NOTA))
