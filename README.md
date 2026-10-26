@@ -17,7 +17,7 @@ Proyecto para Estructura de Datos II — Universidad del Norte.
 ## Requisitos
 
 - Python 3.10 o superior
-- Pygame
+- Pygame - Community Edition (pygame-ce)
 
 ## Instalación
 
