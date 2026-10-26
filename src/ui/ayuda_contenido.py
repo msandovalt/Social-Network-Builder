@@ -112,8 +112,8 @@ PAGINAS = (
             ("Mouse",
              "Haz clic en botones, nodos y regiones; un clic sobre un aviso lo cierra."),
             ("Teclado",
-             "Esc pausa, cierra paneles y vuelve atrás; 1, 2 y 3 detienen los carretes; las flechas "
-             "cambian de página."),
+             "Esc pausa, cierra paneles y vuelve atrás; 1, 2 y 3 detienen los carretes; M silencia "
+             "el audio; las flechas cambian de página."),
             ("Botones de arriba",
              "El botón ? abre esta ayuda y el de las barras pausa el juego."),
         ),

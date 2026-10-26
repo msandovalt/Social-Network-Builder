@@ -64,6 +64,7 @@ from ui.ayuda_view import (
 )
 from ui.paletas import OPCIONES, es_paleta_valida
 from ui.eventos_view import dibujar_aviso, DURACION_AVISO, RECT_AVISO
+from ui.audio_view import dibujar_indicador_audio, DURACION_INDICADOR_AUDIO
 from ui.mapa_view import dibujar_mapa, region_en_posicion, POSICIONES_REGION, RECT_BOTON_EXPANDIR
 from ui.tragamonedas_view import dibujar_tragamonedas, RECTS_REEL, RECT_BOTON_ACCION
 
@@ -109,6 +110,7 @@ class Juego:
         self.pagina_ayuda = 0
         self.tiempo = 0.0   # segundos desde que arrancó la ventana (para las animaciones)
         self.fade = 0.0     # 1.0 recién cambiada la pantalla, baja a 0
+        self.tiempo_indicador_audio = None  # segundos del HUD de mute, None si está oculto
         self.nueva_partida()
 
     def nueva_partida(self):
@@ -185,6 +187,7 @@ class Juego:
     def _tecla(self, tecla):
         if tecla == pygame.K_m:
             mute = self.audio.alternar_mute()
+            self.tiempo_indicador_audio = 0.0  # muestra el HUD de audio unos segundos
             if self.ajustes is not None:
                 self.ajustes.mute = mute
                 self.ajustes.guardar()
@@ -390,6 +393,11 @@ class Juego:
         self.tiempo += dt
         self.fade = max(0.0, self.fade - dt / DURACION_FADE)
 
+        if self.tiempo_indicador_audio is not None:
+            self.tiempo_indicador_audio += dt
+            if self.tiempo_indicador_audio >= DURACION_INDICADOR_AUDIO:
+                self.tiempo_indicador_audio = None
+
         if self.estado not in ESTADOS_CONGELADOS and self.aviso is not None:
             self.tiempo_aviso += dt
             if self.tiempo_aviso >= DURACION_AVISO:
@@ -501,6 +509,9 @@ class Juego:
 
         if self.fade > 0:
             tema.dibujar_overlay(self.pantalla, int(255 * self.fade * self.fade), usar_cache=False)
+
+        if self.tiempo_indicador_audio is not None and self.pantalla is not None and f is not None:
+            dibujar_indicador_audio(self.pantalla, f, self.audio.mute, self.tiempo_indicador_audio)
 
     def _dibujar_pantalla_de_juego(self, estado, nodo_seleccionado):
         """Dibuja Principal, Árbol o Mapa. Se usa tanto para el estado activo
