@@ -274,12 +274,10 @@ def _dibujar_panel_vacio(pantalla, juego):
     tema.dibujar_texto(pantalla, f.normal, f"Regiones conquistadas: {len(juego.mundo.conquistadas())} / {total}",
                        tema.COLOR_VERDE, topleft=(r.x + 24, r.y + 66))
     y = r.y + 104
-    for parrafo in ("Objetivo: conquistar todo el planeta para ganar.",
-                    "Elige una región para ver qué necesita.",
-                    "Solo puedes expandirte a regiones vecinas de las que ya tienes.",
-                    "Lo que desbloquees en el árbol decide hasta dónde puedes llegar.",
-                    "Cada región suma capacidad: sin expandirte, tu red deja de crecer.",
-                    "Cuida a tus usuarios: sin bienestar no puedes expandirte."):
+    for parrafo in ("Objetivo: conquistar todo el planeta. Elige una región para ver qué necesita.",
+                    "Solo puedes expandirte a regiones vecinas; el árbol decide hasta dónde llegar.",
+                    "Cada región suma capacidad e ingresos: sin expandirte, tu red deja de crecer.",
+                    "Cuida el bienestar o no podrás expandirte."):
         for linea in tema.envolver_texto(f.normal, parrafo, r.width - 48):
             tema.dibujar_texto(pantalla, f.normal, linea, tema.COLOR_TEXTO_SEC, topleft=(r.x + 24, y))
             y += 24

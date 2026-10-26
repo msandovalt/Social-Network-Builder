@@ -23,93 +23,86 @@ PAGINAS = (
         "titulo": "Objetivo",
         "puntos": (
             ("Conquista el planeta",
-             f"Tu meta es llevar tu red social a las {_TOTAL_REGIONES} regiones del planeta. "
-             "Cuando conquistes la última, ganas."),
+             f"Haz que tu red social alcance las {_TOTAL_REGIONES} regiones del planeta: al tomar la última, ganas."),
             ("Cuida a tu comunidad",
-             "Una red sana crece más y llega más lejos: si tus usuarios se sienten mal, se van "
-             "y no puedes expandirte."),
+             "Una red sana crece más y llega más lejos; si tus usuarios se sienten mal, no podrás "
+             "expandirte."),
             ("Cómo se pierde",
-             "Pierdes si te quedas en deuda (dinero negativo) o si ya no queda ningún usuario."),
+             "Pierdes si quedas en deuda (dinero negativo) o si no te queda ningún usuario."),
             ("Cómo empezar",
-             "Compra nodos en el Árbol, juega a la tragamonedas para ganar premios y expándete "
-             "desde el Mapa."),
+             "Compra nodos, gana premios en la tragamonedas y expándete desde el Mapa."),
         ),
     },
     {
         "titulo": "Recursos",
         "puntos": (
             ("Dinero",
-             "Sirve para comprar nodos del árbol y pagar las rutas del mapa. Si queda negativo, pierdes."),
+             "Sirve para comprar nodos y pagar rutas del mapa; si queda negativo, pierdes."),
             ("Usuarios",
-             "Crecen solos en cada ronda, pero nunca superan la capacidad de las regiones que "
-             "conquistaste. Para seguir creciendo, expándete."),
+             "Crecen cada ronda hasta la capacidad de tus regiones; para crecer más, expándete."),
             ("Bienestar",
-             f"Mide cómo se sienten tus usuarios. Si baja de {UMBRAL_FUGA}, en cada ronda se va "
+             f"Mide cómo se sienten tus usuarios. Si baja de {UMBRAL_FUGA}, cada ronda se va "
              f"hasta el {round(FUGA_MAXIMA * 100)} % de ellos."),
             ("Reputación y engagement",
-             "La reputación abre las regiones exigentes y los eventos la afectan. El engagement "
-             "mide cuánto tiempo pasan tus usuarios en la red."),
+             "La reputación abre las regiones exigentes y los eventos la afectan; el engagement mide "
+             "el tiempo que pasan tus usuarios."),
         ),
     },
     {
         "titulo": "Árbol",
         "puntos": (
             ("Cómo comprar",
-             "Haz clic en un nodo para ver su detalle y confirma la compra. Un aro amarillo marca "
-             "los que puedes comprar ahora."),
+             "Haz clic en un nodo, revisa su detalle y confirma la compra; el aro amarillo marca "
+             "los disponibles."),
             ("Efecto fijo",
-             "Se aplica una sola vez, en el momento de comprarlo."),
+             "Se aplica una vez, en el momento de la compra."),
             ("Interruptor y dial",
-             "Se aplican en cada ronda: el interruptor mientras esté encendido y el dial en "
-             "proporción a su valor (de 0 a 100)."),
+             "Se aplican cada ronda: el interruptor mientras esté encendido y el dial según su "
+             "valor (0 a 100)."),
             ("Bifurcación",
-             "Eliges una de dos variantes y puedes cambiar cuando quieras. Cada una tiene ventajas y costos."),
+             "Eliges una de dos variantes y puedes cambiarla cuando quieras, con sus ventajas y costos."),
         ),
     },
     {
         "titulo": "Mapa",
         "puntos": (
             ("Expandirte",
-             "Solo puedes expandirte a regiones vecinas de las que ya tienes. Elige una para ver "
-             "qué necesita."),
+             "Solo puedes llegar a regiones vecinas de las que ya tienes. Elige una para ver qué "
+             "necesita."),
             ("Requisitos",
-             "Cada región pide nodos del árbol, usuarios, reputación y bienestar mínimos, y que "
-             "pagues el costo de la ruta."),
+             "Cada región pide nodos del árbol, mínimos de usuarios, reputación y bienestar, y "
+             "pagar la ruta."),
             ("Ruta más barata",
-             "Si eliges una región lejana, el mapa resalta en amarillo el camino más barato para "
-             "llegar hasta ella."),
+             "Al elegir una región lejana, el mapa resalta en amarillo el camino más barato hasta ella."),
             ("Capacidad e ingresos",
-             "Cada región conquistada te da ingresos en cada ronda y sube el máximo de usuarios "
-             "de tu red."),
+             "Cada región conquistada da ingresos por ronda y sube el máximo de usuarios de tu red."),
         ),
     },
     {
         "titulo": "Rondas y eventos",
         "puntos": (
             ("Rondas",
-             f"Cada {round(DURACION_RONDA)} segundos pasa una ronda: se aplican los efectos de tus "
-             "nodos y regiones, y tus usuarios crecen."),
+             f"Cada {round(DURACION_RONDA)} segundos se aplican los efectos de tus nodos y "
+             "regiones, y crecen tus usuarios."),
             ("Eventos",
              f"Cada {round(INTERVALO_EVENTOS)} segundos ocurre un evento aleatorio, bueno o malo. "
-             "Puedes cerrar el aviso con un clic."),
+             "Cierra el aviso con un clic."),
             ("Tu seguridad cuenta",
              "Los nodos de seguridad reducen a la mitad las pérdidas de los eventos malos y frenan "
-             "los que se propagan entre regiones."),
+             "su propagación."),
             ("Pausa",
-             "El tiempo no corre en el menú, en la pausa ni en la ayuda."),
+             "El tiempo no corre en el menú, la pausa ni la ayuda."),
         ),
     },
     {
         "titulo": "Tragamonedas",
         "puntos": (
             ("Cómo jugar",
-             "Pulsa Jugar y detén cada carrete con un clic o con las teclas 1, 2 y 3. Queda el "
-             "símbolo que estaba en el centro."),
+             "Pulsa Jugar y detén cada carrete con un clic o con 1, 2 y 3. Queda el símbolo del centro."),
             ("Premios",
-             "Si alineas tres símbolos iguales ganas una recompensa en dinero, usuarios o "
-             "reputación. Jugar tiene un costo."),
+             "Tres símbolos iguales dan una recompensa en dinero, usuarios o reputación. Jugar cuesta."),
             ("Bienestar y velocidad",
-             "Con menos bienestar los carretes giran más rápido y es más difícil acertar. Las "
+             "Con menos bienestar los carretes giran más rápido y cuesta más acertar; las "
              "probabilidades no cambian."),
         ),
     },
@@ -117,25 +110,23 @@ PAGINAS = (
         "titulo": "Controles",
         "puntos": (
             ("Mouse",
-             "Haz clic en botones, nodos y regiones. Un clic sobre un aviso lo cierra."),
+             "Haz clic en botones, nodos y regiones; un clic sobre un aviso lo cierra."),
             ("Teclado",
-             "Esc pausa el juego, cierra paneles y vuelve atrás. Las teclas 1, 2 y 3 detienen los "
-             "carretes. Las flechas cambian de página en la ayuda."),
+             "Esc pausa, cierra paneles y vuelve atrás; 1, 2 y 3 detienen los carretes; las flechas "
+             "cambian de página."),
             ("Botones de arriba",
-             "El botón con el signo de pregunta abre esta ayuda y el de las dos barras pausa el juego."),
+             "El botón ? abre esta ayuda y el de las barras pausa el juego."),
         ),
     },
     {
         "titulo": "Accesibilidad",
         "puntos": (
             ("Modo daltonismo",
-             "Puedes elegir una paleta de colores pensada para protanopía, deuteranopía, "
-             "tritanopía o acromatopsia."),
+             "Elige una paleta para protanopía, deuteranopía, tritanopía o acromatopsia."),
             ("No solo color",
-             "Además del color, el juego usa íconos y formas (marcas, flechas, candados) para que "
-             "no dependas solo de él."),
+             "El juego también usa íconos y formas (marcas, flechas, candados), no solo color."),
             ("Dónde cambiarlo",
-             "Desde el menú principal, desde la pausa o con el botón de esta página."),
+             "Desde el menú principal, la pausa o el botón de esta página."),
         ),
     },
 )
