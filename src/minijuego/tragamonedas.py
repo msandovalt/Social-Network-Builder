@@ -23,7 +23,7 @@ ETIQUETAS = {
 
 RECOMPENSAS = {
     "dinero": {"dinero": 3000},
-    "usuarios": {"usuarios": 1500},
+    "usuarios": {"usuarios": 150},
     "reputacion": {"reputacion": 6},
 }
 
