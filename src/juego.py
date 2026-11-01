@@ -22,6 +22,8 @@ import random
 import pygame
 
 from audio import GestorAudio
+from mando import GestorMando
+from multijugador import GestorMultijugador
 from eventos.evento import ResultadoEvento, ALERTA_BIENESTAR, NEGATIVO
 from eventos.gestor import GestorEventos
 from mapa.mundo import Mundo
@@ -43,20 +45,28 @@ from ui.nodo_detalle_view import (
 )
 from ui.menu_view import (
     dibujar_menu, dibujar_boton_pausa, dibujar_boton_ayuda, dibujar_pausa, dibujar_fin,
-    RECT_BOTON_START, RECT_BOTON_AYUDA_MENU, RECT_BOTON_ACCESIBILIDAD_MENU, RECT_BOTON_PAUSA,
-    RECT_BOTON_AYUDA_JUEGO, RECT_BOTON_REANUDAR, RECT_BOTON_AYUDA_PAUSA,
-    RECT_BOTON_ACCESIBILIDAD_PAUSA, RECT_BOTON_SALIR_PAUSA, RECT_BOTON_SALIR, RECT_BOTON_NUEVA,
+    RECT_BOTON_START, RECT_BOTON_MULTIJUGADOR, RECT_BOTON_AYUDA_MENU, RECT_BOTON_ACCESIBILIDAD_MENU,
+    RECT_BOTON_PAUSA, RECT_BOTON_AYUDA_JUEGO, RECT_BOTON_REANUDAR, RECT_BOTON_AYUDA_PAUSA,
+    RECT_BOTON_ACCESIBILIDAD_PAUSA, RECT_BOTON_MENU_PAUSA, RECT_BOTON_SALIR_PAUSA,
+    RECT_BOTON_SALIR, RECT_BOTON_NUEVA,
+)
+from ui.multijugador_view import (
+    dibujar_multijugador, RECT_BOTON_CREAR_SALA, RECT_BOTON_ABRIR_VENTANA,
+    RECT_BOTON_UNIRSE_SALA, RECT_BOTON_DETECTAR_SALA, RECT_BOTON_INICIAR_MULTI,
 )
 from ui.resumen_view import (
     calcular_calificacion,
     RECT_BOTON_NUEVA as RECT_BOTON_NUEVA_RESUMEN,
+    RECT_BOTON_MENU_FIN,
     RECT_BOTON_SALIR as RECT_BOTON_SALIR_RESUMEN,
 )
 from ui.hub_view import (
     dibujar_principal, dibujar_base, dibujar_boton_volver,
     RECT_BOTON_ARBOL, RECT_BOTON_BIENESTAR, RECT_CAMPANIA_CONFIRMAR,
     RECT_CAMPANIA_CANCELAR, RECT_BOTON_MAPA, RECT_BOTON_VOLVER,
+    MARGEN as MARGEN_HUB, Y_TARJETAS, ANCHO_TARJETA, ALTO_TARJETA, ESPACIO_TARJETAS,
 )
+from ui.formato import formato_numero
 from ui.accesibilidad_view import dibujar_accesibilidad, RECTS_OPCION
 from ui.ayuda_contenido import TOTAL_PAGINAS, INDICE_ACCESIBILIDAD
 from ui.ayuda_view import (
@@ -67,7 +77,7 @@ from ui.paletas import OPCIONES, es_paleta_valida
 from ui.eventos_view import dibujar_aviso, DURACION_AVISO, RECT_AVISO
 from ui.audio_view import dibujar_indicador_audio, DURACION_INDICADOR_AUDIO
 from ui.mapa_view import dibujar_mapa, region_en_posicion, POSICIONES_REGION, RECT_BOTON_EXPANDIR
-from ui.tragamonedas_view import dibujar_tragamonedas, RECTS_REEL, RECT_BOTON_ACCION
+from ui.tragamonedas_view import dibujar_tragamonedas, RECTS_REEL, RECT_BOTON_ACCION, RECT_PALANCA
 
 MENU = "menu"
 PRINCIPAL = "principal"
@@ -77,9 +87,10 @@ PAUSA = "pausa"
 FIN = "fin"
 AYUDA = "ayuda"
 ACCESIBILIDAD = "accesibilidad"
+MULTIJUGADOR = "multijugador"
 
 PANTALLAS_DE_JUEGO = (PRINCIPAL, ARBOL, MAPA)  # donde corre el tiempo y se puede pausar
-ESTADOS_CONGELADOS = (PAUSA, AYUDA, ACCESIBILIDAD)  # el juego se ve igual pero no avanza
+ESTADOS_CONGELADOS = (PAUSA, AYUDA, ACCESIBILIDAD, MULTIJUGADOR)  # el juego se ve igual pero no avanza
 
 TECLAS_REEL = {pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2}
 
@@ -112,6 +123,8 @@ class Juego:
         self.tiempo = 0.0   # segundos desde que arrancó la ventana (para las animaciones)
         self.fade = 0.0     # 1.0 recién cambiada la pantalla, baja a 0
         self.tiempo_indicador_audio = None  # segundos del HUD de mute, None si está oculto
+        self.mando = GestorMando()
+        self.multi = GestorMultijugador()
         self.nueva_partida()
 
     def nueva_partida(self):
@@ -155,9 +168,12 @@ class Juego:
 
     def manejar_evento(self, evento):
         if evento.type == pygame.QUIT:
+            self.multi.cerrar()
             self.corriendo = False
+        elif self.mando.manejar_evento(evento, self):
+            return
         elif evento.type == pygame.KEYDOWN:
-            self._tecla(evento.key)
+            self._tecla(evento.key, getattr(evento, "unicode", ""))
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
             if (self.aviso is not None and self.estado in PANTALLAS_DE_JUEGO
                     and RECT_AVISO.collidepoint(evento.pos)):
@@ -166,6 +182,7 @@ class Juego:
                 return
             manejador = {
                 MENU: self._click_menu,
+                MULTIJUGADOR: self._click_multijugador,
                 PRINCIPAL: self._click_principal,
                 ARBOL: self._click_arbol,
                 MAPA: self._click_mapa,
@@ -188,7 +205,30 @@ class Juego:
         self.estado_antes_pausa = self.estado
         self.estado = PAUSA
 
-    def _tecla(self, tecla):
+    def _tecla(self, tecla, caracter=""):
+        if self.estado == MULTIJUGADOR:
+            if tecla == pygame.K_ESCAPE:
+                self._volver()
+                return
+            if tecla == pygame.K_BACKSPACE:
+                self.multi.codigo_entrada = self.multi.codigo_entrada[:-1]
+                return
+            if tecla in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                if self.multi.conectado:
+                    if self.multi.iniciar_carrera():
+                        self.audio.clic_ui()
+                        self.nueva_partida()
+                        self._ir_a(PRINCIPAL)
+                elif self.multi.codigo_entrada.strip():
+                    self.audio.clic_ui()
+                    self.multi.unirse_sala(self.multi.codigo_entrada)
+                return
+            texto_ch = caracter or pygame.key.name(tecla)
+            if len(texto_ch) == 1 and (texto_ch.isalnum() or texto_ch in ".:"):
+                if len(self.multi.codigo_entrada) < 21:
+                    self.multi.codigo_entrada += texto_ch.upper()
+                return
+
         if tecla == pygame.K_m:
             mute = self.audio.alternar_mute()
             self.tiempo_indicador_audio = 0.0  # muestra el HUD de audio unos segundos
@@ -205,7 +245,7 @@ class Juego:
                 self._pausar()
             elif self.estado == PAUSA:
                 self.estado = self.estado_antes_pausa
-            elif self.estado in (AYUDA, ACCESIBILIDAD):
+            elif self.estado in (AYUDA, ACCESIBILIDAD, MULTIJUGADOR):
                 self._volver()
         elif self.estado == AYUDA and tecla in (pygame.K_LEFT, pygame.K_RIGHT):
             self.pagina_ayuda = pagina_valida(self.pagina_ayuda + (1 if tecla == pygame.K_RIGHT else -1))
@@ -215,18 +255,46 @@ class Juego:
                 idx = TECLAS_REEL[tecla]
                 if self.maquina.girando[idx]:
                     self.maquina.detener(idx)
+                    if self.maquina.estado != GIRANDO:
+                        self.audio.detener_giro_tragamonedas()
                     self.audio.frenar_carrete()
 
     def _click_menu(self, pos):
         if RECT_BOTON_START.collidepoint(pos):
             self.audio.clic_ui()
             self._ir_a(PRINCIPAL)
+        elif RECT_BOTON_MULTIJUGADOR.collidepoint(pos):
+            self.audio.clic_ui()
+            self._abrir(MULTIJUGADOR)
         elif RECT_BOTON_AYUDA_MENU.collidepoint(pos):
             self.audio.clic_ui()
             self._abrir(AYUDA)
         elif RECT_BOTON_ACCESIBILIDAD_MENU.collidepoint(pos):
             self.audio.clic_ui()
             self._abrir(ACCESIBILIDAD)
+
+    def _click_multijugador(self, pos):
+        if RECT_BOTON_VOLVER.collidepoint(pos):
+            self.audio.clic_ui()
+            self._volver()
+        elif RECT_BOTON_CREAR_SALA.collidepoint(pos):
+            self.audio.clic_ui()
+            self.multi.crear_sala()
+        elif RECT_BOTON_ABRIR_VENTANA.collidepoint(pos):
+            self.audio.clic_ui()
+            self.multi.abrir_segunda_ventana()
+        elif RECT_BOTON_UNIRSE_SALA.collidepoint(pos):
+            if self.multi.codigo_entrada.strip():
+                self.audio.clic_ui()
+                self.multi.unirse_sala(self.multi.codigo_entrada)
+        elif RECT_BOTON_DETECTAR_SALA.collidepoint(pos):
+            self.audio.clic_ui()
+            self.multi.unirse_sala("*")
+        elif RECT_BOTON_INICIAR_MULTI.collidepoint(pos):
+            if self.multi.iniciar_carrera():
+                self.audio.clic_ui()
+                self.nueva_partida()
+                self._ir_a(PRINCIPAL)
 
     def _click_principal(self, pos):
         if self.campania_bienestar_pendiente:
@@ -277,10 +345,12 @@ class Juego:
             if rect.collidepoint(pos) and self.maquina.estado == GIRANDO:
                 if self.maquina.girando[i]:
                     self.maquina.detener(i)
+                    if self.maquina.estado != GIRANDO:
+                        self.audio.detener_giro_tragamonedas()
                     self.audio.frenar_carrete()
                 return
 
-        if RECT_BOTON_ACCION.collidepoint(pos):
+        if RECT_BOTON_ACCION.collidepoint(pos) or (self.maquina.estado == INACTIVO and RECT_PALANCA.collidepoint(pos)):
             if self.maquina.estado == INACTIVO:
                 if self.maquina.iniciar(self.recursos):
                     self.audio.giro_tragamonedas()
@@ -367,12 +437,15 @@ class Juego:
             self.particulas.emitir(x, y, tema.COLOR_VERDE, 30)
             self.particulas.emitir(x, y, (255, 255, 255), 8)
             self._comprobar_victoria()
+            if not self.rondas.terminada:
+                self.multi.enviar_estado_inmediato(self)
 
     def _comprobar_victoria(self):
         capacidad = self.mundo.capacidad_total()
         if (self.mundo.todas_conquistadas() and capacidad > 0
                 and self.recursos.usuarios >= capacidad):
             self.rondas.finalizar(VICTORIA)
+            self.multi.enviar_estado_inmediato(self)
             self._ir_a(FIN)
 
     def _click_pausa(self, pos):
@@ -385,8 +458,14 @@ class Juego:
         elif RECT_BOTON_ACCESIBILIDAD_PAUSA.collidepoint(pos):
             self.audio.clic_ui()
             self._abrir(ACCESIBILIDAD)
+        elif RECT_BOTON_MENU_PAUSA.collidepoint(pos):
+            self.audio.clic_ui()
+            self.multi.cerrar()
+            self.nueva_partida()
+            self._ir_a(MENU)
         elif RECT_BOTON_SALIR_PAUSA.collidepoint(pos):
             self.audio.clic_ui()
+            self.multi.cerrar()
             self.corriendo = False
 
     def _click_ayuda(self, pos):
@@ -434,8 +513,14 @@ class Juego:
             self.audio.clic_ui()
             self.nueva_partida()
             self._ir_a(PRINCIPAL)
+        elif RECT_BOTON_MENU_FIN.collidepoint(pos):
+            self.audio.clic_ui()
+            self.multi.cerrar()
+            self.nueva_partida()
+            self._ir_a(MENU)
         elif RECT_BOTON_SALIR.collidepoint(pos) or RECT_BOTON_SALIR_RESUMEN.collidepoint(pos):
             self.audio.clic_ui()
+            self.multi.cerrar()
             self.corriendo = False
 
     # ------------------------------------------------------------- actualización
@@ -443,6 +528,23 @@ class Juego:
     def actualizar(self, dt):
         self.tiempo += dt
         self.fade = max(0.0, self.fade - dt / DURACION_FADE)
+        self.mando.actualizar(dt)
+
+        accion_multi = self.multi.actualizar(dt, self)
+        if accion_multi == "iniciar_partida":
+            self.nueva_partida()
+            self._ir_a(PRINCIPAL)
+            return
+        elif isinstance(accion_multi, tuple) and self.estado in PANTALLAS_DE_JUEGO:
+            tipo_ev, _ = accion_multi
+            if tipo_ev == "victoria_rival":
+                self.rondas.finalizar("derrota_rival")
+                self._ir_a(FIN)
+                return
+            elif tipo_ev == "colapso_rival":
+                self.rondas.finalizar(VICTORIA)
+                self._ir_a(FIN)
+                return
 
         if self.tiempo_indicador_audio is not None:
             self.tiempo_indicador_audio += dt
@@ -467,9 +569,10 @@ class Juego:
                 if self.maquina.resultado_tipo is not None:
                     self._celebrar(self.maquina.resultado_tipo)
 
-        if self.estado == PRINCIPAL and not self.campania_bienestar_pendiente:
+        if self.estado in PANTALLAS_DE_JUEGO and not self.campania_bienestar_pendiente:
             self.rondas.actualizar(dt, self.arbol, self.recursos, self.mundo)
             if self.rondas.terminada:
+                self.multi.enviar_estado_inmediato(self)
                 self._ir_a(FIN)
             else:
                 evento = self.eventos.actualizar(dt, self.arbol, self.recursos, self.mundo)
@@ -487,8 +590,18 @@ class Juego:
 
         if self.estado not in ESTADOS_CONGELADOS:
             self.particulas.actualizar(dt)
-            for nombre, contador in self.contadores.items():
-                contador.actualizar(dt, getattr(self.recursos, nombre))
+            for idx, (nombre, contador) in enumerate(self.contadores.items()):
+                nuevo = getattr(self.recursos, nombre)
+                delta = int(round(nuevo - contador.objetivo))
+                if delta != 0:
+                    signo = "+" if delta > 0 else "-"
+                    txt_abs = formato_numero(abs(delta))
+                    etiqueta = f"{signo}${txt_abs}" if nombre == "dinero" else f"{signo}{txt_abs}"
+                    color = tema.COLOR_VERDE if delta > 0 else tema.COLOR_ROJO
+                    cx = MARGEN_HUB + idx * (ANCHO_TARJETA + ESPACIO_TARJETAS) + ANCHO_TARJETA // 2
+                    cy = Y_TARJETAS + ALTO_TARJETA + 10
+                    self.particulas.emitir_texto(cx, cy, etiqueta, color)
+                contador.actualizar(dt, nuevo)
 
     def _vigilar_bienestar(self):
         """Avisa una sola vez cuando el bienestar cae bajo el umbral de fuga, y
@@ -541,6 +654,8 @@ class Juego:
         f = self.fuentes
         if self.estado == MENU:
             dibujar_menu(self.pantalla, f, self.tiempo)
+        elif self.estado == MULTIJUGADOR:
+            dibujar_multijugador(self.pantalla, f, self.multi, self.tiempo)
         elif self.estado == FIN:
             dibujar_fin(self.pantalla, f, self.rondas.resultado, self._resumen_final(), self.tiempo)
             self.particulas.dibujar(self.pantalla)
@@ -562,6 +677,7 @@ class Juego:
 
         if self.fade > 0:
             tema.dibujar_overlay(self.pantalla, int(255 * self.fade * self.fade), usar_cache=False)
+        self.mando.dibujar(self.pantalla, f)
 
         if self.tiempo_indicador_audio is not None and self.pantalla is not None and f is not None:
             dibujar_indicador_audio(self.pantalla, f, self.audio.mute, self.tiempo_indicador_audio)
@@ -573,11 +689,12 @@ class Juego:
         if estado == PRINCIPAL:
             dibujar_principal(pantalla, self)
             dibujar_tragamonedas(pantalla, f, self.maquina, self.recursos, self.tiempo)
-            self.particulas.dibujar(pantalla)
+            self.particulas.dibujar(pantalla, f.pequena)
         elif estado == ARBOL:
             dibujar_base(pantalla, self, "Árbol de funcionalidades")
             dibujar_boton_volver(pantalla, f)
             dibujar_arbol(pantalla, self.arbol, f, self.recursos, self.tiempo)
+            self.particulas.dibujar(pantalla, f.pequena)
             if nodo_seleccionado is not None:
                 dibujar_panel_detalle(
                     pantalla, f, nodo_seleccionado, self.recursos,
@@ -586,4 +703,4 @@ class Juego:
         elif estado == MAPA:
             dibujar_mapa(pantalla, self)
             dibujar_boton_volver(pantalla, f)
-            self.particulas.dibujar(pantalla)
+            self.particulas.dibujar(pantalla, f.pequena)

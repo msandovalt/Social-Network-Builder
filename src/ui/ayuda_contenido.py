@@ -9,7 +9,7 @@ Cada página es un diccionario con `titulo` y `puntos`, una lista de
 y textos de hasta ~150 caracteres.
 """
 
-from eventos.gestor import INTERVALO_EVENTOS
+from eventos.gestor import INTERVALO_EVENTOS, INTERVALO_MIN, INTERVALO_MAX
 from mapa.mundo import Mundo
 from tree.ronda import DURACION_RONDA, UMBRAL_FUGA, FUGA_MAXIMA
 
@@ -86,8 +86,8 @@ PAGINAS = (
              f"Cada {round(DURACION_RONDA)} segundos activos se aplican los efectos de tus nodos y "
              "regiones. El tiempo se pausa al abrir el árbol o el mapa."),
             ("Eventos",
-             f"Cada {round(INTERVALO_EVENTOS)} segundos ocurre un evento aleatorio, bueno o malo. "
-             "Cierra el aviso con un clic."),
+             f"Ocurren al azar (cada {round(INTERVALO_MIN)}–{round(INTERVALO_MAX)}s, prom. {round(INTERVALO_EVENTOS)} segundos). "
+             "Con bienestar alto abundan los positivos; si baja, las crisis."),
             ("Tu seguridad cuenta",
              "Los nodos de seguridad reducen a la mitad las pérdidas de los eventos malos y frenan "
              "su propagación."),

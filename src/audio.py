@@ -14,10 +14,18 @@ Ofrece:
 import array
 import math
 import os
+import wave
 
 import pygame
 
-FRECUENCIA_MUESTREO = 22050
+FRECUENCIA_MUESTREO = 44100
+
+RECETA_MUSICA_AMBIENTE = [
+    (220.00, 0.8, "seno", 0.12),
+    (277.18, 0.8, "seno", 0.10),
+    (329.63, 0.8, "seno", 0.12),
+    (246.94, 0.8, "seno", 0.10),
+]
 
 # Definición procedural de cada efecto: lista de (frecuencia_hz, duracion_s, forma, volumen_rel)
 # forma: "seno" | "cuadrada"
@@ -136,6 +144,48 @@ def sintetizar_pcm(segmentos, frecuencia_muestreo=FRECUENCIA_MUESTREO, canales=2
     return muestras.tobytes()
 
 
+def guardar_wav(ruta, pcm_bytes, frecuencia_muestreo=FRECUENCIA_MUESTREO, canales=2):
+    """Guarda un buffer PCM de 16 bits en un archivo .wav estándar."""
+    os.makedirs(os.path.dirname(os.path.abspath(ruta)), exist_ok=True)
+    with wave.open(ruta, "wb") as archivo:
+        archivo.setnchannels(canales)
+        archivo.setsampwidth(2)
+        archivo.setframerate(frecuencia_muestreo)
+        archivo.writeframes(pcm_bytes)
+
+
+def generar_archivos_wav(directorio=RUTA_SONIDOS):
+    """Genera en disco los archivos .wav de todos los efectos y la música base
+    si no existen todavía."""
+    os.makedirs(directorio, exist_ok=True)
+    generados = []
+    nombres_principales = (
+        "clic_ui",
+        "compra_nodo",
+        "expansion_region",
+        "giro_tragamonedas",
+        "frenar_carrete",
+        "premio_triple",
+        "premio_tragamonedas",
+        "sin_premio",
+        "alerta_evento",
+        "evento_positivo",
+        "fin_victoria",
+        "fin_derrota",
+    )
+    for nombre in nombres_principales:
+        ruta = os.path.join(directorio, f"{nombre}.wav")
+        if not os.path.isfile(ruta):
+            guardar_wav(ruta, sintetizar_pcm(RECETAS_SFX[nombre]))
+            generados.append(ruta)
+
+    ruta_musica = os.path.join(directorio, "musica.wav")
+    if not os.path.isfile(ruta_musica):
+        guardar_wav(ruta_musica, sintetizar_pcm(RECETA_MUSICA_AMBIENTE * 2))
+        generados.append(ruta_musica)
+    return generados
+
+
 class GestorAudio:
     """Gestor de SFX y música con síntesis procedural de respaldo y control de mute."""
 
@@ -146,6 +196,7 @@ class GestorAudio:
         self.disponible = False
         self._sonidos = {}
         self._canal_musica = None
+        self._canal_giro = None
         self._loop_musica = None
         self.historial = []  # Registro de los últimos SFX disparados (útil para tests y debug)
         self.ultimo_evento = None
@@ -248,10 +299,15 @@ class GestorAudio:
                 self._canal_musica.set_volume(self.volumen_efectivo_musica())
             except Exception:
                 pass
+        if self._canal_giro is not None:
+            try:
+                self._canal_giro.set_volume(vol_sfx)
+            except Exception:
+                pass
 
     # --- Reproducción de efectos y hooks limpios ---------------------------------
 
-    def reproducir(self, nombre):
+    def reproducir(self, nombre, loops=0):
         """Reproduce un efecto por nombre. Nunca lanza excepción."""
         if self.mute or self._volumen_sfx <= 0.0:
             return False
@@ -269,10 +325,27 @@ class GestorAudio:
             return False
         try:
             sonido.set_volume(self.volumen_efectivo_sfx())
-            sonido.play()
+            canal = sonido.play(loops=loops)
+            if nombre == "giro_tragamonedas":
+                self._canal_giro = canal
             return True
         except Exception:
             return False
+
+    def detener_giro_tragamonedas(self):
+        """Detiene el sonido en bucle de los carretes girando."""
+        if self._canal_giro is not None:
+            try:
+                self._canal_giro.stop()
+            except Exception:
+                pass
+            self._canal_giro = None
+        sonido = self._sonidos.get("giro_tragamonedas")
+        if sonido is not None and self.disponible:
+            try:
+                sonido.stop()
+            except Exception:
+                pass
 
     def iniciar_musica(self, ruta_archivo=None):
         """Inicia música desde `ruta_archivo` o delega a `iniciar_musica_ambiente`."""
@@ -346,12 +419,14 @@ class GestorAudio:
         return self.reproducir("expansion_region")
 
     def giro_tragamonedas(self):
-        return self.reproducir("giro_tragamonedas")
+        self.detener_giro_tragamonedas()
+        return self.reproducir("giro_tragamonedas", loops=-1)
 
     def frenar_carrete(self):
         return self.reproducir("frenar_carrete")
 
     def premio_tragamonedas(self, es_triple=False, hay_premio=True):
+        self.detener_giro_tragamonedas()
         if not hay_premio:
             return self.reproducir("sin_premio")
         return self.reproducir("premio_triple" if es_triple else "premio_tragamonedas")
@@ -361,4 +436,5 @@ class GestorAudio:
         return self.reproducir("alerta_evento" if usar_critico else "evento_positivo")
 
     def fin_partida(self, victoria=False):
+        self.detener_giro_tragamonedas()
         return self.reproducir("fin_victoria" if victoria else "fin_derrota")

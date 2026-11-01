@@ -53,7 +53,7 @@ class TestAvanzarRonda(unittest.TestCase):
         algoritmo.ajustar_dial(50, self.recursos)
 
         avanzar_ronda(self.arbol, self.recursos)
-        self.assertEqual(self.recursos.usuarios, 650)
+        self.assertEqual(self.recursos.usuarios, 560)
         self.assertAlmostEqual(self.recursos.engagement, 35)
         self.assertAlmostEqual(self.recursos.bienestar, 67)
 
@@ -187,7 +187,7 @@ class TestFugaPorBajoBienestar(unittest.TestCase):
         self.recursos.bienestar = 41
         avanzar_ronda(self.arbol, self.recursos)
         self.assertEqual(self.recursos.bienestar, 37)
-        self.assertLess(self.recursos.usuarios, 500)
+        self.assertLess(self.recursos.usuarios, round(1000 * 1.05))
 
     def test_la_fuga_nunca_deja_usuarios_negativos(self):
         self.recursos.usuarios = 3

@@ -160,8 +160,11 @@ class TestGiroSuave(unittest.TestCase):
         self.assertAlmostEqual(self.maquina.tiempo_resultado, 0.5)
 
     def test_mas_bienestar_gira_mas_lento(self):
-        lento = Tragamonedas(); lento.iniciar(Recursos(bienestar=100))
-        rapido = Tragamonedas(); rapido.iniciar(Recursos(bienestar=0))
+        import random
+        lento = Tragamonedas(rng=random.Random(0)); lento.iniciar(Recursos(bienestar=100))
+        rapido = Tragamonedas(rng=random.Random(0)); rapido.iniciar(Recursos(bienestar=0))
+        lento.posiciones = [0.0, 0.0, 0.0]
+        rapido.posiciones = [0.0, 0.0, 0.0]
         lento.actualizar(0.3); rapido.actualizar(0.3)
         self.assertGreater(rapido.posiciones[0], lento.posiciones[0])
 

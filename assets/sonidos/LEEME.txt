@@ -1,0 +1,22 @@
+Sonidos y música del juego
+--------------------------
+En esta carpeta viven los efectos sonoros (.wav / .ogg) y la música de fondo
+que carga automáticamente `src/audio.py`:
+
+- clic_ui.wav             : Clic en botones y navegación de la interfaz
+- compra_nodo.wav         : Desbloqueo de un nodo en el árbol
+- expansion_region.wav    : Conquista de una nueva región en el mapa
+- giro_tragamonedas.wav   : Inicio de giro en la tragamonedas
+- frenar_carrete.wav      : Frenado individual de cada carrete
+- premio_tragamonedas.wav : Premio al alinear símbolos en la tragamonedas
+- premio_triple.wav       : Premio triple en la tragamonedas
+- sin_premio.wav          : Tirada sin combinación ganadora
+- alerta_evento.wav       : Evento negativo o alerta de bienestar bajo
+- evento_positivo.wav     : Evento aleatorio positivo
+- fin_victoria.wav        : Fanfarria de victoria al conquistar el planeta
+- fin_derrota.wav         : Cierre de partida por quiebra o éxodo
+- musica.wav              : Loop de música ambiental de fondo
+
+Puedes reemplazar cualquiera de estos archivos por tus propios `.wav` o `.ogg`
+manteniendo el mismo nombre; si alguno se borra, el juego sintetiza el sonido
+proceduralmente en memoria para no fallar nunca.
