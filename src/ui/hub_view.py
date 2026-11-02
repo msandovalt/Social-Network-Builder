@@ -62,7 +62,7 @@ def _dibujar_tarjeta(pantalla, fuentes, rect, etiqueta, color, contador, clave, 
 
     color_etiqueta = tema.COLOR_TEXTO_SEC
     if clave == "bienestar" and valor < UMBRAL_FUGA:  # los usuarios se están yendo
-        etiqueta, color_etiqueta = "Bienestar ¡bajo!", tema.COLOR_ROJO
+        etiqueta, color_etiqueta = "Bienestar (bajo)", tema.COLOR_ROJO
     tema.dibujar_texto(pantalla, fuentes.pequena, etiqueta, color_etiqueta,
                        topleft=(rect.x + 26, rect.y + 6))
     rect_valor = tema.dibujar_texto(pantalla, fuentes.boton, texto, color_valor,
