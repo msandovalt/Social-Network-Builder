@@ -10,7 +10,6 @@ Proyecto para Estructura de Datos II — Universidad del Norte.
 ## Integrantes
 
 - Andrés Torres García
-- Camilo Andrade Barrera
 - Mario Sandoval Tilano
 - Sebastián Molina Molina
 
