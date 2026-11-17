@@ -1,9 +1,7 @@
 """
-Gestor de eventos aleatorios: a intervalos aleatorios (entre `INTERVALO_MIN` y
-`INTERVALO_MAX` segundos) elige un evento y lo aplica. La probabilidad de que
-ocurra un evento positivo o negativo depende del Bienestar de la comunidad:
-con bienestar alto abundan las buenas noticias e inversiones; con bienestar
-bajo proliferan el ciberacoso, la desinformación y las crisis.
+Gestor de eventos aleatorios: en intervalos impredecibles elige un evento y lo
+aplica. La probabilidad depende del bienestar y de las afinidades de cada
+evento con la reputación, el engagement, los usuarios y las regiones.
 
 Al igual que las rondas, el tiempo solo corre en las pantallas de juego
 (no en el menú, la pausa ni el fin de partida).
@@ -81,7 +79,7 @@ class GestorEventos:
     def segundos_restantes(self):
         return max(0.0, self.intervalo - self.acumulado)
 
-    def elegir_evento(self, arbol, bienestar=None):
+    def elegir_evento(self, arbol, bienestar=None, metricas=None):
         """Evento al azar entre los que pueden ocurrir ahora. Evita repetir el
         anterior si hay otra opción.
 
@@ -100,7 +98,8 @@ class GestorEventos:
         if bienestar is None:
             return self.rng.choice(elegibles)
 
-        # Ponderación según bienestar (escala 0-100)
+        # El bienestar inclina el balance general entre eventos positivos y
+        # negativos. Las afinidades agregan contexto propio de cada evento.
         b = max(0.0, min(100.0, float(bienestar)))
         pesos = []
         for e in elegibles:
@@ -110,14 +109,20 @@ class GestorEventos:
             else:
                 # Más probable cuanto mayor sea el bienestar
                 peso = b + 10.0
+            for metrica, direccion in getattr(e, "afinidades", {}).items():
+                valor = max(0.0, min(1.0, float((metricas or {}).get(metrica, 0.5))))
+                # Cada afinidad multiplica el peso entre 0.5x y 1.5x.
+                peso *= 0.5 + valor if direccion > 0 else 1.5 - valor
             pesos.append(peso)
 
         return self.rng.choices(elegibles, weights=pesos, k=1)[0]
 
-    def disparar(self, arbol, recursos, mundo, evento=None):
+    def disparar(self, arbol, recursos, mundo, evento=None, metricas=None):
         """Aplica un evento ya (el indicado, o uno al azar ponderado por bienestar)."""
         bienestar = getattr(recursos, "bienestar", None) if recursos is not None else None
-        evento = evento or self.elegir_evento(arbol, bienestar=bienestar)
+        evento = evento or self.elegir_evento(
+            arbol, bienestar=bienestar, metricas=metricas,
+        )
         if evento is None:
             return None
         resultado = aplicar_evento(evento, arbol, recursos, mundo, self.rng)
@@ -131,7 +136,17 @@ class GestorEventos:
         if self.acumulado < self.intervalo:
             return None
         sobrante = self.acumulado % self.intervalo
-        resultado = self.disparar(arbol, recursos, mundo)
+        limite_usuarios = max(1, getattr(recursos, "limite_usuarios", 1))
+        total_regiones = max(1, len(getattr(mundo, "regiones", {})))
+        conquistadas = len(mundo.conquistadas()) if mundo is not None else 0
+        metricas = {
+            "bienestar": max(0.0, min(1.0, recursos.bienestar / 100)),
+            "reputacion": max(0.0, min(1.0, recursos.reputacion / 100)),
+            "engagement": max(0.0, min(1.0, recursos.engagement / 100)),
+            "usuarios": max(0.0, min(1.0, recursos.usuarios / limite_usuarios)),
+            "regiones": max(0.0, min(1.0, conquistadas / total_regiones)),
+        }
+        resultado = self.disparar(arbol, recursos, mundo, metricas=metricas)
         self.intervalo = self._nuevo_intervalo()
         self.acumulado = min(sobrante, max(0.0, self.intervalo - 0.001))
         return resultado

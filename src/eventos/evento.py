@@ -28,7 +28,7 @@ ResultadoEvento = namedtuple("ResultadoEvento", "evento efectos origen regiones 
 
 class Evento:
     def __init__(self, id_evento, titulo, descripcion, tono, efectos=None, por_region=None,
-                 saltos=0, mitigadores=(), contencion=None, requiere_nodos=()):
+                 saltos=0, mitigadores=(), contencion=None, requiere_nodos=(), afinidades=None):
         self.id = id_evento
         self.titulo = titulo
         self.descripcion = descripcion
@@ -39,6 +39,8 @@ class Evento:
         self.mitigadores = tuple(mitigadores)   # nodos que reducen a la mitad las pérdidas
         self.contencion = contencion or {}      # nodo -> saltos que le quita a la propagación
         self.requiere_nodos = tuple(requiere_nodos)  # solo ocurre si están desbloqueados
+        # Métrica -> dirección: 1 favorece valores altos; -1 favorece valores bajos.
+        self.afinidades = afinidades or {}
 
     @property
     def se_propaga(self):
@@ -52,44 +54,55 @@ CATALOGO = (
     # --- Buenas noticias ---
     Evento("resena_prensa", "Reseña en la prensa",
            "Un medio destaca tu red por promover un uso sano de la tecnología.",
-           POSITIVO, efectos={"reputacion": 8, "usuarios": 150}),
+           POSITIVO, efectos={"reputacion": 8, "usuarios": 150},
+           afinidades={"bienestar": 1, "reputacion": 1}),
     Evento("influencer", "Un creador te recomienda",
            "Un creador de contenido invita a sus seguidores a probar tu red.",
-           POSITIVO, efectos={"usuarios": 300, "engagement": 0.04}),
+           POSITIVO, efectos={"usuarios": 300, "engagement": 0.04},
+           afinidades={"reputacion": 1, "engagement": 1}),
     Evento("desconexion_digital", "Campaña de desconexión digital",
            "Tus usuarios se animan a pasar un rato lejos de la pantalla.",
-           POSITIVO, efectos={"bienestar": 8, "engagement": -0.03}),
+           POSITIVO, efectos={"bienestar": 8, "engagement": -0.03},
+           afinidades={"bienestar": -1}),
     Evento("inversion", "Inversión inesperada",
            "Un fondo apuesta por tu proyecto y te transfiere capital.",
-           POSITIVO, efectos={"dinero": 1500}),
+           POSITIVO, efectos={"dinero": 1500},
+           afinidades={"reputacion": 1, "usuarios": 1}),
     Evento("publicacion_viral", "Publicación viral",
            "Una publicación positiva se comparte de región en región.",
-           POSITIVO, por_region={"usuarios": 120}, saltos=2),
+           POSITIVO, por_region={"usuarios": 120}, saltos=2,
+           afinidades={"engagement": 1, "regiones": 1}),
 
     # --- Problemas ---
     Evento("ciberacoso", "Ola de ciberacoso",
            "Crecen los comentarios hirientes y tus usuarios se sienten mal.",
            NEGATIVO, efectos={"bienestar": -8, "reputacion": -4},
-           mitigadores=("comunidad_verificacion", "seguridad_avanzada")),
+           mitigadores=("comunidad_verificacion", "seguridad_avanzada"),
+           afinidades={"bienestar": -1, "engagement": 1}),
     Evento("filtracion_datos", "Filtración de datos",
            "Una brecha de seguridad expone información de tus usuarios.",
            NEGATIVO, efectos={"reputacion": -12, "dinero": -800},
-           mitigadores=("seguridad_basica", "seguridad_avanzada")),
+           mitigadores=("seguridad_basica", "seguridad_avanzada"),
+           afinidades={"reputacion": -1, "usuarios": 1}),
     Evento("reto_peligroso", "Reto viral peligroso",
            "Un reto riesgoso se difunde y presiona a los más jóvenes.",
            NEGATIVO, efectos={"bienestar": -10, "engagement": 0.06},
-           mitigadores=("comunidad_verificacion",)),
+           mitigadores=("comunidad_verificacion",),
+           afinidades={"bienestar": -1, "engagement": 1}),
     Evento("desinformacion", "Ola de desinformación",
            "Un rumor falso se riega de región en región.",
            NEGATIVO, por_region={"reputacion": -3}, saltos=3,
-           contencion={"seguridad_basica": 1, "seguridad_avanzada": 2}),
+           contencion={"seguridad_basica": 1, "seguridad_avanzada": 2},
+           afinidades={"reputacion": -1, "regiones": 1}),
     Evento("caida_servidor", "Caída del servidor",
            "Un fallo técnico deja a tus usuarios sin servicio por unas horas.",
-           NEGATIVO, efectos={"dinero": -600, "bienestar": -2}),
+           NEGATIVO, efectos={"dinero": -600, "bienestar": -2},
+           afinidades={"usuarios": 1, "regiones": 1}),
     Evento("adiccion_scroll", "Atrapados en el scroll",
            "Tus usuarios pasan horas desplazándose sin parar y se sienten agotados.",
            NEGATIVO, efectos={"bienestar": -6, "engagement": 0.08},
-           requiere_nodos=("feed_scroll",)),
+           requiere_nodos=("feed_scroll",),
+           afinidades={"bienestar": -1, "engagement": 1}),
 )
 
 

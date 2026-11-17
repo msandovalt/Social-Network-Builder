@@ -113,7 +113,7 @@ class TestArbolEnElJuego(unittest.TestCase):
         click(self.juego, RECT_BOTON_ARBOL)
 
     def test_la_partida_empieza_con_raiz_y_categorias_desbloqueadas(self):
-        for id_nodo in ("red_social", "feed", "comunidad", "seguridad"):
+        for id_nodo in ("red_social", "feed", "comunidad", "seguridad", "monetizacion", "marca"):
             self.assertTrue(nodo(self.juego, id_nodo).desbloqueado, id_nodo)
 
     def test_comprar_un_nodo_fijo_cobra_y_cierra_el_panel(self):
@@ -150,6 +150,8 @@ class TestArbolEnElJuego(unittest.TestCase):
 
     def test_dial_se_ajusta_desde_el_panel(self):
         algoritmo = nodo(self.juego, "feed_algoritmo")
+        click(self.juego, centro_de_nodo("feed_basico"))
+        click(self.juego, RECT_BOTON_COMPRAR)
         click(self.juego, centro_de_nodo("feed_algoritmo"))
         click(self.juego, RECT_BOTON_COMPRAR)
         click(self.juego, RECT_DIAL_MAS)
@@ -161,6 +163,8 @@ class TestArbolEnElJuego(unittest.TestCase):
 
     def test_dial_se_ajusta_haciendo_clic_en_la_barra(self):
         algoritmo = nodo(self.juego, "feed_algoritmo")
+        click(self.juego, centro_de_nodo("feed_basico"))
+        click(self.juego, RECT_BOTON_COMPRAR)
         click(self.juego, centro_de_nodo("feed_algoritmo"))
         click(self.juego, RECT_BOTON_COMPRAR)
         click(self.juego, (RECT_DIAL_BARRA.centerx, RECT_DIAL_BARRA.centery))
@@ -264,7 +268,7 @@ class TestMapaEnElJuego(unittest.TestCase):
     def test_los_textos_de_los_requisitos_son_legibles(self):
         reqs = self.juego.mundo.requisitos("centroamerica", self.juego.arbol, self.juego.recursos)
         textos = [texto_requisito(r) for r in reqs]
-        self.assertIn("Usuarios: 500 / 600", textos)
+        self.assertIn("Usuarios: 500 / 1.000", textos)
         self.assertTrue(any(t.startswith("Nodo «") for t in textos))
         self.assertTrue(any(t.startswith("Pagar $1.500") for t in textos))
 

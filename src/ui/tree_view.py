@@ -1,12 +1,9 @@
 """
 Dibujo del árbol de funcionalidades.
 
-Diseño de posiciones: los 3 hijos de cada rama (Feed / Comunidad / Seguridad)
-salen directo de esa rama, nunca uno del otro. Dos de ellos van lado a lado
-justo debajo de la rama, y el tercero (el de nombre más largo) va centrado
-una fila más abajo, exactamente en el hueco entre los otros dos: así la línea
-que baja desde la rama pasa limpia por el medio en vez de parecer que sale de
-alguno de sus "hermanos".
+Diseño de posiciones: las cinco ramas tienen una columna propia. Las opciones
+independientes forman una cuadrícula; las dependientes aparecen debajo de su
+requisito. Un bus común hace visibles los niveles de hermanos.
 
 Qué se ve en cada nodo:
 - color según el tipo (bloqueado / efecto fijo / interactivo);
@@ -26,25 +23,38 @@ from ui.formato import formato_numero
 Y_LEYENDA = 624
 
 POSICIONES = {
-    "red_social": (510, 146, 260, 56),
+    "red_social": (540, 128, 200, 48),
 
-    "feed": (136, 250, 240, 56),
-    "comunidad": (520, 250, 240, 56),
-    "seguridad": (904, 250, 240, 56),
+    "feed": (8, 216, 240, 48),
+    "comunidad": (264, 216, 240, 48),
+    "seguridad": (520, 216, 240, 48),
+    "monetizacion": (776, 216, 240, 48),
+    "marca": (1032, 216, 240, 48),
 
-    # Feed (hijos directos de "feed", no encadenados entre sí)
-    "feed_basico": (76, 362, 170, 64),
-    "feed_scroll": (266, 362, 170, 64),
-    "feed_algoritmo": (141, 480, 230, 64),
+    # Las ramas con dependencia centran su primer nodo y abren sus mejoras debajo.
+    "feed_basico": (56, 294, 144, 52),
+    "feed_scroll": (16, 370, 112, 52),
+    "feed_algoritmo": (136, 370, 112, 52),
+    "feed_saludable": (72, 432, 112, 52),
 
-    # Comunidad (hijos directos de "comunidad")
-    "comunidad_grupos": (460, 362, 170, 64),
-    "comunidad_mensajes": (650, 362, 170, 64),
-    "comunidad_verificacion": (525, 480, 230, 64),
+    # Las herramientas de Comunidad son opciones hermanas en una cuadrícula.
+    "comunidad_grupos": (272, 294, 112, 52),
+    "comunidad_mensajes": (392, 294, 112, 52),
+    "comunidad_verificacion": (272, 366, 112, 52),
+    "comunidad_consejo": (392, 366, 112, 52),
 
-    # Seguridad (hijos directos de "seguridad", solo 2, caben en una fila)
-    "seguridad_basica": (844, 362, 170, 64),
-    "seguridad_avanzada": (1034, 362, 170, 64),
+    "seguridad_basica": (568, 294, 144, 52),
+    "seguridad_avanzada": (528, 370, 112, 52),
+    "seguridad_privacidad": (648, 370, 112, 52),
+    "seguridad_transparencia": (584, 432, 112, 52),
+
+    "monetizacion_anuncios": (784, 294, 112, 52),
+    "monetizacion_suscripcion": (904, 294, 112, 52),
+    "monetizacion_datos": (844, 366, 112, 52),
+
+    "marketing_referidos": (1040, 294, 112, 52),
+    "marketing_creadores": (1160, 294, 112, 52),
+    "marketing_campana": (1100, 366, 112, 52),
 }
 
 
@@ -98,34 +108,70 @@ def _punto_en_polilinea(puntos, fraccion):
     return puntos[-1]
 
 
-def dibujar_conexiones(pantalla, arbol, t=0.0):
-    """Líneas en ángulo recto de cada nodo hacia su padre real (según el árbol
-    de datos, no según la posición en pantalla). Se iluminan cuando el hijo
-    ya está desbloqueado y muestran un pulso de energía viajando por la rama."""
-    for idx, nodo in enumerate(arbol.recorrido_bfs()):
-        if nodo.padre is None:
+def _dibujar_flecha_dependencia(pantalla, x, y, color):
+    """Marca el sentido requisito -> mejora en el extremo de cada conexión."""
+    pygame.draw.polygon(
+        pantalla, color,
+        ((x - 5, y - 4), (x + 5, y - 4), (x, y + 4)),
+    )
+
+
+def dibujar_conexiones(pantalla, arbol, t=0.0, recursos=None):
+    """Dibuja buses de requisitos y flechas hacia cada mejora hija.
+
+    Los hermanos comparten un tronco y se separan en un bus horizontal; así el
+    dibujo deja claro que parten del mismo requisito y no forman una cadena.
+    """
+    indice = 0
+    for padre in arbol.recorrido_bfs():
+        pos_padre = POSICIONES.get(padre.id)
+        if pos_padre is None:
             continue
-        pos_padre = POSICIONES.get(nodo.padre.id)
-        pos_hijo = POSICIONES.get(nodo.id)
-        if pos_padre is None or pos_hijo is None:
+        hijos = [(hijo, POSICIONES.get(hijo.id)) for hijo in padre.hijos]
+        hijos = [(hijo, pos) for hijo, pos in hijos if pos is not None]
+        if not hijos:
             continue
+
         xp, yp, wp, hp = pos_padre
-        xh, yh, wh, hh = pos_hijo
         x_padre, y_padre = xp + wp // 2, yp + hp
-        x_hijo, y_hijo = xh + wh // 2, yh
-        y_medio = min(y_padre + 28, (y_padre + y_hijo) // 2)
+        centros = [(pos[0] + pos[2] // 2, pos[1]) for _, pos in hijos]
+        bus_y = min(y for _, y in centros) - 12
 
-        puntos = [(x_padre, y_padre), (x_padre, y_medio), (x_hijo, y_medio), (x_hijo, y_hijo)]
-        color = tema.COLOR_ACENTO if nodo.desbloqueado else tema.COLOR_BORDE
-        for a, b in zip(puntos, puntos[1:]):
-            pygame.draw.line(pantalla, color, a, b, 3)
+        if len(hijos) > 1:
+            pygame.draw.line(pantalla, tema.COLOR_BORDE, (x_padre, y_padre), (x_padre, bus_y), 2)
+            pygame.draw.line(
+                pantalla, tema.COLOR_BORDE,
+                (min(x for x, _ in centros), bus_y),
+                (max(x for x, _ in centros), bus_y), 2,
+            )
 
-        if nodo.desbloqueado:
-            fase = (t * 0.55 + idx * 0.17) % 1.0
-            px, py = _punto_en_polilinea(puntos, fase)
-            color_pulso = tema.aclarar(tema.COLOR_CIAN, 0.35)
-            pygame.draw.circle(pantalla, color, (px, py), 6)
-            pygame.draw.circle(pantalla, color_pulso, (px, py), 3)
+        for hijo, (x_hijo, y_hijo) in zip((h for h, _ in hijos), centros):
+            if hijo.desbloqueado:
+                color = tema.COLOR_ACENTO
+            elif recursos is not None and hijo.puede_desbloquearse(recursos):
+                color = tema.COLOR_AMARILLO
+            else:
+                color = tema.COLOR_BORDE
+
+            if len(hijos) == 1:
+                y_medio = min(y_padre + 24, (y_padre + y_hijo) // 2)
+                puntos = [(x_padre, y_padre), (x_padre, y_medio),
+                          (x_hijo, y_medio), (x_hijo, y_hijo)]
+                for a, b in zip(puntos, puntos[1:]):
+                    pygame.draw.line(pantalla, color, a, b, 3)
+            else:
+                puntos = [(x_padre, y_padre), (x_padre, bus_y),
+                          (x_hijo, bus_y), (x_hijo, y_hijo)]
+                pygame.draw.line(pantalla, color, (x_hijo, bus_y), (x_hijo, y_hijo), 3)
+
+            _dibujar_flecha_dependencia(pantalla, x_hijo, y_hijo + 1, color)
+            if hijo.desbloqueado:
+                fase = (t * 0.55 + indice * 0.17) % 1.0
+                px, py = _punto_en_polilinea(puntos, fase)
+                color_pulso = tema.aclarar(tema.COLOR_CIAN, 0.35)
+                pygame.draw.circle(pantalla, color, (px, py), 5)
+                pygame.draw.circle(pantalla, color_pulso, (px, py), 2)
+            indice += 1
 
 
 def _dibujar_icono_rama(pantalla, nodo, rect, tinta):
@@ -152,6 +198,13 @@ def _dibujar_icono_rama(pantalla, nodo, rect, tinta):
     elif nid.startswith("seguridad"):
         escudo = [(cx, cy - 7), (cx + 6, cy - 4), (cx + 5, cy + 3), (cx, cy + 7), (cx - 5, cy + 3), (cx - 6, cy - 4)]
         pygame.draw.polygon(pantalla, tinta, escudo, width=2)
+    elif nid.startswith("monetizacion"):
+        pygame.draw.circle(pantalla, tinta, (cx, cy), 7, width=2)
+        pygame.draw.line(pantalla, tinta, (cx, cy - 4), (cx, cy + 4), 2)
+    elif nid.startswith(("marca", "marketing")):
+        pygame.draw.circle(pantalla, tinta, (cx, cy), 6, width=2)
+        pygame.draw.line(pantalla, tinta, (cx, cy - 9), (cx, cy + 9), 1)
+        pygame.draw.line(pantalla, tinta, (cx - 9, cy), (cx + 9, cy), 1)
 
 
 def _dibujar_icono_tipo(pantalla, nodo, rect, tinta):
@@ -191,11 +244,13 @@ def _dibujar_nodo(pantalla, fuentes, nodo, rect, recursos, t):
     base = color_de_nodo(nodo)
     disponible = nodo.puede_desbloquearse(recursos)
     encima = tema.esta_encima(rect)
+    compacto = rect.width < 150
 
     # Aros de atención (se dibujan debajo de la caja)
     if disponible:
         brillo = tema.mezclar(tema.COLOR_AMARILLO, tema.COLOR_TEXTO, pulso(t, 1.2))
-        pygame.draw.rect(pantalla, brillo, rect.inflate(10 + int(pulso(t, 1.2) * 6), 10 + int(pulso(t, 1.2) * 6)),
+        expansion = 4 + int(pulso(t, 1.2) * 2) if compacto else 10 + int(pulso(t, 1.2) * 6)
+        pygame.draw.rect(pantalla, brillo, rect.inflate(expansion, expansion),
                          width=2, border_radius=18)
     elif nodo.tipo_control == "interruptor" and nodo.activo:
         brillo = tema.mezclar(tema.COLOR_VERDE, tema.COLOR_TEXTO, pulso(t, 1.6))
@@ -206,9 +261,18 @@ def _dibujar_nodo(pantalla, fuentes, nodo, rect, recursos, t):
 
     subtitulo = subtitulo_de_nodo(nodo)
     color_nombre = tema.color_sobre(relleno) if nodo.desbloqueado or disponible else tema.COLOR_TEXTO_SEC
+    nombre = {
+        "feed_saludable": "Saludable",
+        "seguridad_transparencia": "Transparenc.",
+        "comunidad_verificacion": "Verificación",
+        "comunidad_consejo": "Consejo",
+        "marketing_campana": "Campaña",
+    }.get(nodo.id, nodo.nombre)
+    fuente_nombre = fuentes.arbol_pequena if compacto else fuentes.arbol
     if subtitulo:
-        tema.dibujar_texto(pantalla, fuentes.arbol, nodo.nombre, color_nombre,
-                           center=(rect.centerx + 4, rect.centery - 11))
+        tema.dibujar_texto(pantalla, fuente_nombre, nombre, color_nombre,
+                           center=(rect.centerx if compacto else rect.centerx + 4,
+                                   rect.centery - (9 if compacto else 11)))
         if not nodo.desbloqueado and recursos.dinero < nodo.costo:
             color_sub = tema.COLOR_ROJO
         elif nodo.desbloqueado:
@@ -216,14 +280,15 @@ def _dibujar_nodo(pantalla, fuentes, nodo, rect, recursos, t):
         else:
             color_sub = tema.COLOR_AMARILLO
         tema.dibujar_texto(pantalla, fuentes.arbol_pequena, subtitulo, color_sub,
-                           center=(rect.centerx, rect.centery + 13))
+                           center=(rect.centerx, rect.centery + (14 if compacto else 13)))
     else:
-        tema.dibujar_texto(pantalla, fuentes.arbol, nodo.nombre, color_nombre,
-                           center=(rect.centerx + 4, rect.centery))
+        tema.dibujar_texto(pantalla, fuente_nombre, nombre, color_nombre,
+                           center=(rect.centerx if compacto else rect.centerx + 4, rect.centery))
 
-    _dibujar_icono_rama(pantalla, nodo, rect, color_nombre)
-    _dibujar_icono_tipo(pantalla, nodo, rect, color_nombre)
-    _dibujar_mini_indicador(pantalla, nodo, rect)
+    if not compacto:
+        _dibujar_icono_rama(pantalla, nodo, rect, color_nombre)
+        _dibujar_icono_tipo(pantalla, nodo, rect, color_nombre)
+        _dibujar_mini_indicador(pantalla, nodo, rect)
 
 
 def _dibujar_leyenda(pantalla, fuentes):
@@ -245,7 +310,7 @@ def _dibujar_leyenda(pantalla, fuentes):
 
 
 def dibujar_arbol(pantalla, arbol, fuentes, recursos, t):
-    dibujar_conexiones(pantalla, arbol, t)
+    dibujar_conexiones(pantalla, arbol, t, recursos)
     for nodo in arbol.recorrido_bfs():
         posicion = POSICIONES.get(nodo.id)
         if posicion is None:

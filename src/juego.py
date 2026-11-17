@@ -85,6 +85,7 @@ TECLAS_REEL = {pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2}
 
 RECURSOS_VISIBLES = ("dinero", "usuarios", "bienestar", "reputacion", "engagement")
 DURACION_FADE = 0.25  # segundos del fundido al cambiar de pantalla
+DURACION_ENFRIAMIENTO_CAMPANA = 4
 
 
 class Juego:
@@ -132,8 +133,8 @@ class Juego:
         self._confeti = 0.0
         self.nodo_seleccionado = None
         self.cambio_nodo_pendiente = None
-        self.campania_bienestar_pendiente = False
-        self.ronda_ultima_campania = None
+        self.campania_marca_pendiente = False
+        self.ronda_ultima_campana_marca = None
         self.region_seleccionada = None
         self.particulas = SistemaParticulas()
         self.contadores = {
@@ -229,16 +230,18 @@ class Juego:
             self._abrir(ACCESIBILIDAD)
 
     def _click_principal(self, pos):
-        if self.campania_bienestar_pendiente:
+        if self.campania_marca_pendiente:
             if RECT_CAMPANIA_CONFIRMAR.collidepoint(pos):
-                if self.puede_aplicar_campania_bienestar():
-                    costo = self.costo_campania_bienestar()
-                    self.recursos.aplicar_efectos({"dinero": -costo, "bienestar": 10})
-                    self.ronda_ultima_campania = self.rondas.numero
-                    self.campania_bienestar_pendiente = False
+                if self.puede_aplicar_campania_marca():
+                    costo = self.costo_campania_marca()
+                    self.recursos.aplicar_efectos(
+                        {"dinero": -costo, "bienestar": 5, "reputacion": 3}
+                    )
+                    self.ronda_ultima_campana_marca = self.rondas.numero
+                    self.campania_marca_pendiente = False
                     self.audio.clic_ui()
             elif RECT_CAMPANIA_CANCELAR.collidepoint(pos):
-                self.campania_bienestar_pendiente = False
+                self.campania_marca_pendiente = False
                 self.audio.clic_ui()
             return
 
@@ -252,8 +255,8 @@ class Juego:
             self.audio.clic_ui()
             self._ir_a(ARBOL)
         elif RECT_BOTON_BIENESTAR.collidepoint(pos):
-            if self.puede_aplicar_campania_bienestar():
-                self.campania_bienestar_pendiente = True
+            if self.puede_aplicar_campania_marca():
+                self.campania_marca_pendiente = True
                 self.audio.clic_ui()
         elif RECT_BOTON_MAPA.collidepoint(pos):
             self.audio.clic_ui()
@@ -261,15 +264,23 @@ class Juego:
         else:
             self._click_tragamonedas(pos)
 
-    def costo_campania_bienestar(self):
+    def costo_campania_marca(self):
         regiones = len(self.mundo.conquistadas())
-        return 300 + max(0, regiones - 1) * 50
+        return round(800 + self.recursos.usuarios * 0.08 + max(0, regiones - 1) * 150)
 
-    def puede_aplicar_campania_bienestar(self):
+    def rondas_hasta_campania_disponible(self):
+        if self.ronda_ultima_campana_marca is None:
+            return 0
+        transcurridas = self.rondas.numero - self.ronda_ultima_campana_marca
+        return max(0, DURACION_ENFRIAMIENTO_CAMPANA - transcurridas)
+
+    def puede_aplicar_campania_marca(self):
+        nodo_campana = self.arbol.nodo_por_id("marketing_campana")
         return (
-            self.recursos.bienestar < 100
-            and self.recursos.dinero >= self.costo_campania_bienestar()
-            and self.ronda_ultima_campania != self.rondas.numero
+            nodo_campana.desbloqueado
+            and (self.recursos.bienestar < 100 or self.recursos.reputacion < 100)
+            and self.recursos.dinero >= self.costo_campania_marca()
+            and self.rondas_hasta_campania_disponible() == 0
         )
 
     def _click_tragamonedas(self, pos):
@@ -467,7 +478,7 @@ class Juego:
                 if self.maquina.resultado_tipo is not None:
                     self._celebrar(self.maquina.resultado_tipo)
 
-        if self.estado == PRINCIPAL and not self.campania_bienestar_pendiente:
+        if self.estado == PRINCIPAL and not self.campania_marca_pendiente:
             self.rondas.actualizar(dt, self.arbol, self.recursos, self.mundo)
             if self.rondas.terminada:
                 self._ir_a(FIN)
