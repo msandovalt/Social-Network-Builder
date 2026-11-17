@@ -38,7 +38,7 @@ class TestArbol(unittest.TestCase):
         feed.desbloquear(self.recursos)
         algoritmo.desbloquear(self.recursos)
 
-        algoritmo.ajustar_dial(50)
+        algoritmo.ajustar_dial(50, self.recursos)
         efecto = algoritmo.efecto_por_ronda()
         self.assertAlmostEqual(efecto["bienestar"], -3)  # -6 * 0.5
 
@@ -50,7 +50,7 @@ class TestArbol(unittest.TestCase):
         scroll.desbloquear(self.recursos)
 
         self.assertEqual(scroll.efecto_por_ronda(), {})
-        scroll.alternar_interruptor()
+        scroll.alternar_interruptor(self.recursos)
         self.assertNotEqual(scroll.efecto_por_ronda(), {})
 
     def test_no_se_puede_desbloquear_sin_dinero_suficiente(self):
@@ -94,16 +94,16 @@ class TestArbol(unittest.TestCase):
         algoritmo = feed.hijos[2]
         self.arbol.desbloquear_gratuitos(self.recursos)
         algoritmo.desbloquear(self.recursos)
-        algoritmo.ajustar_dial(250)
+        algoritmo.ajustar_dial(250, self.recursos)
         self.assertEqual(algoritmo.valor, 100)
-        algoritmo.ajustar_dial(-30)
+        algoritmo.ajustar_dial(-30, self.recursos)
         self.assertEqual(algoritmo.valor, 0)
 
     def test_controles_se_ignoran_si_el_nodo_no_esta_desbloqueado(self):
         feed = self.arbol.raiz.hijos[0]
         scroll, algoritmo = feed.hijos[1], feed.hijos[2]
-        scroll.alternar_interruptor()
-        algoritmo.ajustar_dial(80)
+        scroll.alternar_interruptor(self.recursos)
+        algoritmo.ajustar_dial(80, self.recursos)
         self.assertFalse(scroll.activo)
         self.assertEqual(algoritmo.valor, 0)
 
@@ -114,9 +114,9 @@ class TestArbol(unittest.TestCase):
         mensajes.desbloquear(self.recursos)
 
         self.assertEqual(mensajes.efecto_por_ronda(), {})
-        mensajes.elegir_variante("cifrado")
+        mensajes.elegir_variante("cifrado", self.recursos)
         self.assertEqual(mensajes.efecto_por_ronda()["reputacion"], 5)
-        mensajes.elegir_variante("abierta")
+        mensajes.elegir_variante("abierta", self.recursos)
         self.assertEqual(mensajes.efecto_por_ronda()["crecimiento"], 0.03)
 
     def test_bifurcacion_ignora_variantes_que_no_existen(self):
@@ -124,8 +124,8 @@ class TestArbol(unittest.TestCase):
         mensajes = comunidad.hijos[1]
         self.arbol.desbloquear_gratuitos(self.recursos)
         mensajes.desbloquear(self.recursos)
-        mensajes.elegir_variante("cifrado")
-        mensajes.elegir_variante("inexistente")
+        mensajes.elegir_variante("cifrado", self.recursos)
+        mensajes.elegir_variante("inexistente", self.recursos)
         self.assertEqual(mensajes.variante_actual, "cifrado")
 
     def test_efectos_totales_suman_interruptores_diales_y_bifurcaciones(self):
@@ -137,12 +137,48 @@ class TestArbol(unittest.TestCase):
         for nodo in (scroll, algoritmo, mensajes):
             nodo.desbloquear(recursos)
 
-        scroll.alternar_interruptor()       # bienestar -4
-        algoritmo.ajustar_dial(50)          # bienestar -3
-        mensajes.elegir_variante("abierta")  # bienestar -2
+        scroll.alternar_interruptor(recursos)  # bienestar -4
+        algoritmo.ajustar_dial(50, recursos)  # bienestar -3
+        mensajes.elegir_variante("abierta", recursos)  # bienestar -2
 
         totales = self.arbol.efectos_totales_de_la_ronda()
         self.assertAlmostEqual(totales["bienestar"], -9)
+
+    def test_ajustar_dial_cobra_segun_el_cambio(self):
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
+        self.arbol.desbloquear_gratuitos(self.recursos)
+        algoritmo.desbloquear(self.recursos)
+        dinero_antes = self.recursos.dinero
+        self.assertTrue(algoritmo.ajustar_dial(25, self.recursos))
+        self.assertEqual(self.recursos.dinero, dinero_antes - 500)
+        self.assertEqual(algoritmo.valor, 25)
+
+    def test_cambiar_interruptor_cobra_el_costo_de_reconfiguracion(self):
+        scroll = self.arbol.nodo_por_id("feed_scroll")
+        self.arbol.desbloquear_gratuitos(self.recursos)
+        scroll.desbloquear(self.recursos)
+        dinero_antes = self.recursos.dinero
+        self.assertTrue(scroll.alternar_interruptor(self.recursos))
+        self.assertTrue(scroll.activo)
+        self.assertEqual(self.recursos.dinero, dinero_antes - 300)
+
+    def test_cambiar_bifurcacion_cobra_y_no_aplica_si_falta_dinero(self):
+        mensajes = self.arbol.nodo_por_id("comunidad_mensajes")
+        self.arbol.desbloquear_gratuitos(self.recursos)
+        mensajes.desbloquear(self.recursos)
+        self.recursos.dinero = 100
+        self.assertFalse(mensajes.elegir_variante("cifrado", self.recursos))
+        self.assertIsNone(mensajes.variante_actual)
+        self.assertEqual(self.recursos.dinero, 100)
+
+    def test_dial_no_cambia_si_no_alcanza_el_dinero_para_el_ajuste(self):
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
+        recursos = Recursos(dinero=5010)
+        self.arbol.desbloquear_gratuitos(recursos)
+        algoritmo.desbloquear(recursos)
+        self.assertFalse(algoritmo.ajustar_dial(100, recursos))
+        self.assertEqual(algoritmo.valor, 0)
+        self.assertEqual(recursos.dinero, 10)
 
     def test_nodos_disponibles_respeta_padre_y_dinero(self):
         self.arbol.desbloquear_gratuitos(self.recursos)

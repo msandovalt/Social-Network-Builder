@@ -71,7 +71,7 @@ class Arbol:
                                 descripcion="Interruptor: mientras esté encendido, sube crecimiento y engagement, "
                                             "pero baja el bienestar cada ronda que sigue activo.")
         algoritmo = Nodo("feed_algoritmo", "Algoritmo", "dial", costo=5000,
-                          efectos={"usuarios": 300, "engagement": 0.1, "bienestar": -6},
+                          efectos={"usuarios": 120, "engagement": 0.1, "bienestar": -6},
                           descripcion="Dial de agresividad (0-100): entre más alto, más usuarios y engagement, "
                                       "pero más baja el bienestar.")
         feed.agregar_hijo(basico)

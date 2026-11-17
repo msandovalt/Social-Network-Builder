@@ -107,10 +107,13 @@ class TestBienestarMinimo(unittest.TestCase):
     def tipos(self, id_region):
         return [r.tipo for r in self.mundo.requisitos(id_region, self.arbol, self.recursos)]
 
-    def test_las_regiones_lejanas_exigen_bienestar_pero_la_primera_no(self):
-        self.assertNotIn("bienestar", self.tipos("centroamerica"))
-        for id_region in ("norteamerica", "africa", "europa", "medio_oriente", "asia", "oceania"):
+    def test_todas_las_expansiones_exigen_bienestar(self):
+        for id_region in ("centroamerica", "norteamerica", "africa", "europa", "medio_oriente", "asia", "oceania"):
             self.assertIn("bienestar", self.tipos(id_region), id_region)
+
+    def test_todas_las_expansiones_exigen_reputacion(self):
+        for id_region in ("centroamerica", "norteamerica", "africa", "europa", "medio_oriente", "asia", "oceania"):
+            self.assertIn("reputacion", self.tipos(id_region), id_region)
 
     def test_el_bienestar_exigido_crece_con_la_distancia_a_los_mercados_exigentes(self):
         minimos = {id_region: r.bienestar for id_region, r in self.mundo.regiones.items()}
@@ -288,9 +291,9 @@ class TestCapacidad(unittest.TestCase):
 class TestIngresos(unittest.TestCase):
     def test_los_ingresos_suman_solo_las_regiones_conquistadas(self):
         mundo = Mundo.construir_mundo_inicial()
-        self.assertEqual(mundo.efectos_totales_de_la_ronda(), {"usuarios": 25, "dinero": 120})
+        self.assertEqual(mundo.efectos_totales_de_la_ronda(), {"usuarios": 15, "dinero": 120})
         mundo.regiones["centroamerica"].conquistada = True
-        self.assertEqual(mundo.efectos_totales_de_la_ronda(), {"usuarios": 55, "dinero": 220})
+        self.assertEqual(mundo.efectos_totales_de_la_ronda(), {"usuarios": 30, "dinero": 220})
 
     def test_mundo_propio_con_regiones_personalizadas(self):
         mundo = Mundo()
@@ -300,6 +303,12 @@ class TestIngresos(unittest.TestCase):
         mundo.regiones["a"].conquistada = True
         mundo.regiones["b"].conquistada = True
         self.assertEqual(mundo.efectos_totales_de_la_ronda(), {"dinero": 15, "usuarios": 1})
+
+    def test_costo_operativo_crece_con_el_tamano_y_numero_de_regiones(self):
+        mundo = Mundo.construir_mundo_inicial()
+        self.assertEqual(mundo.costo_operativo(500), 110)
+        mundo.regiones["centroamerica"].conquistada = True
+        self.assertEqual(mundo.costo_operativo(2000), 220)
 
 
 if __name__ == "__main__":

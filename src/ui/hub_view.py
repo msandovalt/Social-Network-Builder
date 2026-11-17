@@ -25,6 +25,9 @@ ESPACIO_TARJETAS = 10
 RECT_BOTON_VOLVER = pygame.Rect(MARGEN, 88, 130, 38)  # usado en Árbol y Mapa para volver a Principal
 RECT_AREA_MINIJUEGO = pygame.Rect(220, 140, 840, 440)
 RECT_BOTON_ARBOL = pygame.Rect(220, 604, 260, 60)
+RECT_BOTON_BIENESTAR = pygame.Rect(510, 604, 260, 60)
+RECT_CAMPANIA_CONFIRMAR = pygame.Rect(510, 604, 125, 60)
+RECT_CAMPANIA_CANCELAR = pygame.Rect(645, 604, 125, 60)
 RECT_BOTON_MAPA = pygame.Rect(800, 604, 260, 60)
 
 # (clave en Recursos, etiqueta, ¿es una escala 0-100?). El color de cada recurso
@@ -139,11 +142,42 @@ def dibujar_principal(pantalla, juego):
     fuentes = juego.fuentes
     dibujar_base(pantalla, juego, "Panel principal")
     mundo = juego.mundo
-    tema.dibujar_texto(pantalla, fuentes.normal,
-                       f"Objetivo: conquistar el planeta ({len(mundo.conquistadas())}/{len(mundo.regiones)})",
+    if mundo.todas_conquistadas():
+        objetivo = (f"Objetivo final: llenar la comunidad "
+                    f"({juego.recursos.usuarios:,}/{mundo.capacidad_total():,})").replace(",", ".")
+    else:
+        objetivo = f"Objetivo: conquistar el planeta ({len(mundo.conquistadas())}/{len(mundo.regiones)})"
+    tema.dibujar_texto(pantalla, fuentes.normal, objetivo,
                        tema.COLOR_TEXTO_SEC, topleft=(MARGEN, 96))
     tema.dibujar_panel(pantalla, RECT_AREA_MINIJUEGO, radio=22)
     tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_ARBOL, "Árbol", tema.COLOR_ACENTO, radio=16)
+    costo_campania = juego.costo_campania_bienestar()
+    if juego.campania_bienestar_pendiente:
+        tema.dibujar_texto(
+            pantalla, fuentes.pequena,
+            f"¿Aplicar +10 bienestar por ${formato_numero(costo_campania)}?",
+            tema.COLOR_TEXTO_SEC, center=(ANCHO // 2, 590),
+        )
+        tema.dibujar_boton(pantalla, fuentes.pequena, RECT_CAMPANIA_CONFIRMAR,
+                           "Confirmar", tema.COLOR_BOTON_OK,
+                           habilitado=juego.puede_aplicar_campania_bienestar(), radio=12)
+        tema.dibujar_boton(pantalla, fuentes.pequena, RECT_CAMPANIA_CANCELAR,
+                           "Cancelar", tema.COLOR_BOTON_PELIGRO, radio=12)
+    else:
+        disponible = juego.puede_aplicar_campania_bienestar()
+        if juego.recursos.bienestar >= 100:
+            estado_campania = "Bienestar al máximo"
+        elif juego.ronda_ultima_campania == juego.rondas.numero:
+            estado_campania = "Una campaña por ronda"
+        elif juego.recursos.dinero < costo_campania:
+            estado_campania = f"Faltan ${formato_numero(costo_campania - juego.recursos.dinero)}"
+        else:
+            estado_campania = f"Recupera 10 bienestar · ${formato_numero(costo_campania)}"
+        tema.dibujar_texto(pantalla, fuentes.pequena, estado_campania,
+                           tema.COLOR_TEXTO_SEC, center=(ANCHO // 2, 590))
+        tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_BIENESTAR,
+                           "Campaña de bienestar", tema.COLOR_BOTON_OK,
+                           habilitado=disponible, radio=16)
     tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_MAPA, "Mapa", tema.COLOR_ACENTO, radio=16)
     tema.dibujar_texto(pantalla, fuentes.pequena, "Pulsa el botón ? de arriba para ver la ayuda",
                        tema.COLOR_TEXTO_SEC, center=(ANCHO // 2, 692))

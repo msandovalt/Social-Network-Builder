@@ -3,19 +3,21 @@
 import os
 import sys
 import unittest
+import random
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from tree.recursos import Recursos
 from minijuego.tragamonedas import (
     Tragamonedas, INACTIVO, GIRANDO, POR_RESOLVER, RESUELTO, DURACION_ASENTADO,
+    MULTIPLICADOR_PREMIO_DINERO,
 )
 
 
 class TestTragamonedas(unittest.TestCase):
     def setUp(self):
         self.recursos = Recursos(dinero=10000, bienestar=70)
-        self.maquina = Tragamonedas()
+        self.maquina = Tragamonedas(rng=random.Random(17))
 
     def test_costo_es_proporcional_al_dinero_con_piso_minimo(self):
         self.assertEqual(self.maquina.costo(Recursos(dinero=1000)), 200)  # 5% sería 50, aplica el piso
@@ -27,6 +29,11 @@ class TestTragamonedas(unittest.TestCase):
         self.assertEqual(self.recursos.dinero, 10000 - costo_esperado)
         self.assertEqual(self.maquina.estado, GIRANDO)
         self.assertTrue(all(self.maquina.girando))
+
+    def test_cada_partida_asigna_fases_y_velocidades_independientes(self):
+        self.maquina.iniciar(self.recursos)
+        self.assertEqual(len(set(self.maquina.posiciones)), 3)
+        self.assertEqual(len(set(self.maquina.velocidades)), 3)
 
     def test_no_se_puede_iniciar_sin_dinero_suficiente(self):
         recursos_pobres = Recursos(dinero=100, bienestar=70)
@@ -41,15 +48,34 @@ class TestTragamonedas(unittest.TestCase):
         self.maquina.detener(2)
         self.assertEqual(self.maquina.estado, POR_RESOLVER)
 
+    def test_el_plazo_detiene_los_carretes_que_siguen_girando(self):
+        self.maquina.iniciar(self.recursos)
+        self.maquina.actualizar(self.maquina.tiempo_limite + 1.0)
+        self.assertEqual(self.maquina.estado, POR_RESOLVER)
+        self.assertFalse(any(self.maquina.girando))
+        self.assertAlmostEqual(self.maquina.tiempo_giro, self.maquina.tiempo_limite)
+
     def test_resolver_con_simbolos_iguales_otorga_recompensa(self):
         self.maquina.iniciar(self.recursos)
-        self.maquina.indices = [0, 0, 0]  # forzar los tres iguales para la prueba
+        self.maquina.posiciones = [0.0, 0.0, 0.0]  # forzar los tres iguales
         for i in range(3):
             self.maquina.detener(i)
         dinero_antes = self.recursos.dinero
         self.maquina.resolver(self.recursos)
         self.assertEqual(self.maquina.estado, RESUELTO)
         self.assertGreater(self.recursos.dinero, dinero_antes)
+
+    def test_premio_en_dinero_es_proporcional_a_la_apuesta(self):
+        self.maquina.iniciar(self.recursos)
+        apuesta = self.maquina.apuesta
+        self.maquina.posiciones = [0.0, 0.0, 0.0]
+        for i in range(3):
+            self.maquina.detener(i)
+        self.maquina.actualizar(DURACION_ASENTADO)
+        dinero_antes = self.recursos.dinero
+        self.maquina.resolver(self.recursos)
+        self.assertEqual(self.recursos.dinero,
+                         dinero_antes + apuesta * MULTIPLICADOR_PREMIO_DINERO)
 
     def test_bienestar_bajo_produce_intervalo_mas_corto_que_bienestar_alto(self):
         self.maquina.iniciar(Recursos(dinero=10000, bienestar=100))
@@ -67,13 +93,14 @@ class TestGiroSuave(unittest.TestCase):
         self.maquina.iniciar(self.recursos)
 
     def test_la_posicion_avanza_de_forma_continua(self):
+        self.maquina.posiciones[0] = 0.0
         self.maquina.actualizar(0.1)
-        # bienestar 100 -> 0.45 s por símbolo -> 0.1 s = 0.222 símbolos
-        self.assertAlmostEqual(self.maquina.posiciones[0], 0.1 / 0.45)
-        self.assertEqual(self.maquina.indices[0], 0)
+        self.assertAlmostEqual(self.maquina.posiciones[0], 0.1 * self.maquina.velocidades[0])
+        self.assertEqual(self.maquina.indices[0], int(round(self.maquina.posiciones[0])) % 3)
 
     def test_el_indice_es_el_simbolo_mas_cercano_al_centro(self):
-        self.maquina.actualizar(0.45 * 0.6)  # 0.6 símbolos -> el más cercano es el 1
+        self.maquina.posiciones[0] = 0.0
+        self.maquina.actualizar(0.6 / self.maquina.velocidades[0])
         self.assertEqual(self.maquina.indices[0], 1)
 
     def test_la_posicion_da_la_vuelta_al_completar_los_simbolos(self):
@@ -81,13 +108,15 @@ class TestGiroSuave(unittest.TestCase):
         self.assertTrue(0 <= self.maquina.posiciones[0] < 3)
 
     def test_al_detener_queda_el_simbolo_que_estaba_al_centro(self):
-        self.maquina.actualizar(0.45 * 1.2)  # posición 1.2 -> símbolo 1
+        self.maquina.posiciones[0] = 0.0
+        self.maquina.actualizar(1.2 / self.maquina.velocidades[0])
         self.maquina.detener(0)
         self.assertEqual(self.maquina.indices[0], 1)
         self.assertFalse(self.maquina.girando[0])
 
     def test_el_carrete_frena_suavemente_hasta_alinearse(self):
-        self.maquina.actualizar(0.45 * 1.3)
+        self.maquina.posiciones[0] = 0.0
+        self.maquina.actualizar(1.3 / self.maquina.velocidades[0])
         self.maquina.detener(0)
         self.assertFalse(self.maquina.asentada())
         self.maquina.actualizar(DURACION_ASENTADO / 2)
@@ -103,6 +132,7 @@ class TestGiroSuave(unittest.TestCase):
         self.assertFalse(self.maquina.asentada())
 
     def test_resolver_registra_el_simbolo_ganador(self):
+        self.maquina.posiciones = [0.0, 0.0, 0.0]
         for i in range(3):
             self.maquina.detener(i)  # los tres en la posición 0 -> dinero
         self.maquina.actualizar(1.0)

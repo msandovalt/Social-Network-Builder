@@ -37,7 +37,8 @@ Requisito = namedtuple("Requisito", "tipo etiqueta necesario actual cumplido")
 
 
 # Bienestar mínimo para expandirte a cada región (se ajusta jugando)
-BIEN_NORTE, BIEN_AFRICA, BIEN_EUROPA, BIEN_MEDIO, BIEN_ASIA, BIEN_OCEANIA = 40, 40, 50, 45, 50, 55
+BIEN_CENTRO, BIEN_NORTE, BIEN_AFRICA, BIEN_EUROPA, BIEN_MEDIO, BIEN_ASIA, BIEN_OCEANIA = 50, 40, 40, 50, 45, 50, 55
+REP_CENTRO, REP_NORTE, REP_AFRICA, REP_EUROPA, REP_MEDIO, REP_ASIA, REP_OCEANIA = 45, 50, 45, 60, 55, 65, 70
 
 
 # Capacidad de usuarios que aporta cada región (se ajusta jugando)
@@ -87,6 +88,12 @@ class Mundo:
     def capacidad_total(self):
         """Tope de usuarios de tu red: suma de la capacidad de las regiones conquistadas."""
         return sum(region.capacidad for region in self.regiones.values() if region.conquistada)
+
+    def costo_operativo(self, usuarios):
+        """Costo recurrente de moderar y sostener la red a su escala actual."""
+        regiones = len(self.conquistadas())
+        comunidades = math.ceil(max(0, usuarios) / 1000)
+        return regiones * 30 + comunidades * 80
 
     def todas_conquistadas(self):
         """Condición de victoria: el planeta entero es tuyo."""
@@ -182,35 +189,39 @@ class Mundo:
         regiones = (
             Region("sudamerica", "Sudamérica",
                    "Tu punto de partida. Comunidad joven y muy conectada.",
-                   {"usuarios": 25, "dinero": 120}, capacidad=CAP_SUDAMERICA),
+                   {"usuarios": 15, "dinero": 120}, capacidad=CAP_SUDAMERICA),
             Region("centroamerica", "Centroamérica",
                    "Puente entre dos continentes. Un feed básico basta para empezar.",
-                   {"usuarios": 30, "dinero": 100},
-                   nodos=("feed_basico",), usuarios=600, capacidad=CAP_CENTROAMERICA),
+                   {"usuarios": 15, "dinero": 100},
+                   nodos=("feed_basico",), usuarios=600, reputacion=REP_CENTRO,
+                   bienestar=BIEN_CENTRO, capacidad=CAP_CENTROAMERICA),
             Region("norteamerica", "Norteamérica",
                    "Mercado grande y rico, pero exige comunidades activas y buena reputación.",
-                   {"usuarios": 45, "dinero": 450},
-                   nodos=("comunidad_grupos",), usuarios=1200, reputacion=50, bienestar=BIEN_NORTE, capacidad=CAP_NORTEAMERICA),
+                   {"usuarios": 25, "dinero": 450},
+                   nodos=("comunidad_grupos",), usuarios=2000, reputacion=REP_NORTE, bienestar=BIEN_NORTE, capacidad=CAP_NORTEAMERICA),
             Region("africa", "África",
                    "Población joven en pleno crecimiento. Necesitas seguridad básica para operar.",
-                   {"usuarios": 90, "dinero": 60},
-                   nodos=("seguridad_basica",), usuarios=1000, bienestar=BIEN_AFRICA, capacidad=CAP_AFRICA),
+                   {"usuarios": 40, "dinero": 60},
+                   nodos=("seguridad_basica",), usuarios=1800, reputacion=REP_AFRICA,
+                   bienestar=BIEN_AFRICA, capacidad=CAP_AFRICA),
             Region("europa", "Europa",
                    "Leyes estrictas de privacidad: sin seguridad avanzada no puedes entrar.",
-                   {"usuarios": 50, "dinero": 350, "reputacion": 0.5},
-                   nodos=("seguridad_avanzada",), usuarios=1500, reputacion=60, bienestar=BIEN_EUROPA, capacidad=CAP_EUROPA),
+                   {"usuarios": 20, "dinero": 350, "reputacion": 0.5},
+                   nodos=("seguridad_avanzada",), usuarios=3500, reputacion=REP_EUROPA, bienestar=BIEN_EUROPA, capacidad=CAP_EUROPA),
             Region("medio_oriente", "Medio Oriente",
                    "Encrucijada entre tres continentes. La confianza entre usuarios es clave.",
-                   {"usuarios": 70, "dinero": 300},
-                   nodos=("comunidad_verificacion",), usuarios=2000, bienestar=BIEN_MEDIO, capacidad=CAP_MEDIO),
+                   {"usuarios": 30, "dinero": 300},
+                   nodos=("comunidad_verificacion",), usuarios=5000, reputacion=REP_MEDIO,
+                   bienestar=BIEN_MEDIO, capacidad=CAP_MEDIO),
             Region("asia", "Asia",
                    "El mayor mercado del planeta. Exige un feed inteligente y cuentas verificadas.",
-                   {"usuarios": 160, "dinero": 250},
-                   nodos=("feed_algoritmo", "comunidad_verificacion"), usuarios=3000, bienestar=BIEN_ASIA, capacidad=CAP_ASIA),
+                   {"usuarios": 60, "dinero": 250},
+                   nodos=("feed_algoritmo", "comunidad_verificacion"), usuarios=8000,
+                   reputacion=REP_ASIA, bienestar=BIEN_ASIA, capacidad=CAP_ASIA),
             Region("oceania", "Oceanía",
                    "Islas lejanas y exigentes: comunidades sólidas y una reputación impecable.",
-                   {"usuarios": 60, "dinero": 280},
-                   nodos=("seguridad_basica", "comunidad_grupos"), usuarios=2500, reputacion=65, bienestar=BIEN_OCEANIA, capacidad=CAP_OCEANIA),
+                   {"usuarios": 25, "dinero": 280},
+                   nodos=("seguridad_basica", "comunidad_grupos"), usuarios=12000, reputacion=REP_OCEANIA, bienestar=BIEN_OCEANIA, capacidad=CAP_OCEANIA),
         )
         for region in regiones:
             mundo.agregar_region(region)

@@ -14,6 +14,9 @@ El campo `tipo_control` determina cómo se comporta una vez desbloqueado:
 """
 
 TIPOS_CONTROL = ("fijo", "interruptor", "dial", "bifurcacion")
+COSTO_POR_PUNTO_DIAL = 20
+FACTOR_COSTO_INTERRUPTOR = 0.10
+FACTOR_COSTO_BIFURCACION = 0.15
 
 
 class Nodo:
@@ -65,21 +68,70 @@ class Nodo:
             recursos.aplicar_efectos(self.efectos)
         return True
 
-    def alternar_interruptor(self):
+    def costo_cambio(self, nuevo_valor):
+        """Presupuesta una reconfiguración antes de aplicarla."""
+        if self.tipo_control == "dial":
+            objetivo = max(0, min(100, round(nuevo_valor)))
+            return abs(objetivo - self.valor) * COSTO_POR_PUNTO_DIAL
+        if self.tipo_control == "interruptor":
+            if bool(nuevo_valor) == self.activo:
+                return 0
+            return max(100, round(self.costo * FACTOR_COSTO_INTERRUPTOR))
+        if self.tipo_control == "bifurcacion":
+            if nuevo_valor not in self.variantes or nuevo_valor == self.variante_actual:
+                return 0
+            return max(200, round(self.costo * FACTOR_COSTO_BIFURCACION))
+        return 0
+
+    def confirmar_cambio(self, nuevo_valor, recursos):
+        """Aplica una reconfiguración solo si es válida y se puede pagar."""
+        if not self.desbloqueado:
+            return False
+        if self.tipo_control == "dial":
+            objetivo = max(0, min(100, round(nuevo_valor)))
+            cambio = objetivo != self.valor
+        elif self.tipo_control == "interruptor":
+            objetivo = bool(nuevo_valor)
+            cambio = objetivo != self.activo
+        elif self.tipo_control == "bifurcacion":
+            if nuevo_valor not in self.variantes:
+                return False
+            objetivo = nuevo_valor
+            cambio = objetivo != self.variante_actual
+        else:
+            return False
+        if not cambio:
+            return True
+        costo = self.costo_cambio(objetivo)
+        if recursos.dinero < costo:
+            return False
+        recursos.dinero -= costo
+        if self.tipo_control == "dial":
+            self.valor = objetivo
+        elif self.tipo_control == "interruptor":
+            self.activo = objetivo
+        else:
+            self.variante_actual = objetivo
+        return True
+
+    def alternar_interruptor(self, recursos):
         if self.tipo_control != "interruptor" or not self.desbloqueado:
-            return
-        self.activo = not self.activo
+            return False
+        return self.confirmar_cambio(not self.activo, recursos)
 
-    def ajustar_dial(self, nuevo_valor):
-        if self.tipo_control != "dial" or not self.desbloqueado:
-            return
-        self.valor = max(0, min(100, nuevo_valor))
+    def costo_ajuste_dial(self, nuevo_valor):
+        """Costo de cambiar el dial, proporcional a los puntos modificados."""
+        return self.costo_cambio(nuevo_valor)
 
-    def elegir_variante(self, nombre_variante):
+    def ajustar_dial(self, nuevo_valor, recursos):
+        if self.tipo_control != "dial":
+            return False
+        return self.confirmar_cambio(nuevo_valor, recursos)
+
+    def elegir_variante(self, nombre_variante, recursos):
         if self.tipo_control != "bifurcacion" or not self.desbloqueado:
-            return
-        if nombre_variante in self.variantes:
-            self.variante_actual = nombre_variante
+            return False
+        return self.confirmar_cambio(nombre_variante, recursos)
 
     def efecto_por_ronda(self):
         """Calcula el efecto que este nodo aporta en la ronda actual.

@@ -13,6 +13,7 @@ import pygame
 from ui import tema
 from ui.formato import formato_numero, formatear_efectos
 from ui.tema import ANCHO
+from tree.nodo import COSTO_POR_PUNTO_DIAL
 
 RECT_PANEL = pygame.Rect((ANCHO - 620) // 2, 100, 620, 520)
 RECT_BOTON_COMPRAR = pygame.Rect(370, 556, 200, 48)
@@ -76,7 +77,7 @@ def lineas_de_efectos(nodo):
     return [f"Al comprarlo: {texto}"]
 
 
-def _dibujar_controles(pantalla, fuentes, nodo):
+def _dibujar_controles(pantalla, fuentes, nodo, recursos):
     """Dibuja los controles del nodo según su tipo (solo si está desbloqueado)."""
     if nodo.tipo_control == "interruptor":
         texto = "Encendido (clic para apagar)" if nodo.activo else "Apagado (clic para encender)"
@@ -96,6 +97,9 @@ def _dibujar_controles(pantalla, fuentes, nodo):
         pygame.draw.circle(pantalla, tema.COLOR_NARANJA, perilla, 10, width=3)
         tema.dibujar_texto(pantalla, fuentes.normal, f"{nodo.valor}%", tema.COLOR_TEXTO,
                            midbottom=(barra.centerx, barra.y - 8))
+        tema.dibujar_texto(pantalla, fuentes.pequena,
+                           f"Se cobra al confirmar: ${formato_numero(COSTO_POR_PUNTO_DIAL)} por punto",
+                           tema.COLOR_TEXTO_SEC, center=(RECT_PANEL.centerx, Y_CONTROLES + 58))
 
     elif nodo.tipo_control == "bifurcacion":
         for rect, nombre in zip(RECT_VARIANTES, nodo.variantes):
@@ -105,37 +109,60 @@ def _dibujar_controles(pantalla, fuentes, nodo):
 
 
 def manejar_click_controles(nodo, pos):
-    """Aplica el clic sobre los controles del nodo. Devuelve True si el clic
-    cayó sobre un control (para que el llamador no lo trate como otra cosa)."""
+    """Devuelve una propuesta de cambio para presupuestar y confirmar."""
     if not nodo.desbloqueado:
-        return False
+        return None
 
     if nodo.tipo_control == "interruptor" and RECT_INTERRUPTOR.collidepoint(pos):
-        nodo.alternar_interruptor()
-        return True
+        return {"tipo": "interruptor", "valor": not nodo.activo}
 
     if nodo.tipo_control == "dial":
         if RECT_DIAL_MENOS.collidepoint(pos):
-            nodo.ajustar_dial(nodo.valor - PASO_DIAL)
-            return True
+            return {"tipo": "dial", "valor": max(0, nodo.valor - PASO_DIAL)}
         if RECT_DIAL_MAS.collidepoint(pos):
-            nodo.ajustar_dial(nodo.valor + PASO_DIAL)
-            return True
+            return {"tipo": "dial", "valor": min(100, nodo.valor + PASO_DIAL)}
         if RECT_DIAL_BARRA.inflate(0, 24).collidepoint(pos):
             proporcion = (pos[0] - RECT_DIAL_BARRA.x) / RECT_DIAL_BARRA.width
-            nodo.ajustar_dial(round(proporcion * 100 / PASO_BARRA) * PASO_BARRA)
-            return True
+            objetivo = max(0, min(100, round(proporcion * 100 / PASO_BARRA) * PASO_BARRA))
+            return {"tipo": "dial", "valor": objetivo}
 
     if nodo.tipo_control == "bifurcacion":
         for rect, nombre in zip(RECT_VARIANTES, nodo.variantes):
             if rect.collidepoint(pos):
-                nodo.elegir_variante(nombre)
-                return True
+                return {"tipo": "bifurcacion", "valor": nombre}
 
-    return False
+    return None
 
 
-def dibujar_panel_detalle(pantalla, fuentes, nodo, recursos):
+def _texto_cambio(nodo, cambio):
+    valor = cambio["valor"]
+    if cambio["tipo"] == "dial":
+        return f"{nodo.nombre}: {nodo.valor}% → {valor}%"
+    if cambio["tipo"] == "interruptor":
+        accion = "Encender" if valor else "Apagar"
+        return f"{accion} {nodo.nombre}"
+    return f"Cambiar {nodo.nombre} a {_etiqueta_variante(valor)}"
+
+
+def _dibujar_confirmacion(pantalla, fuentes, nodo, recursos, cambio):
+    costo = nodo.costo_cambio(cambio["valor"])
+    tema.dibujar_texto(pantalla, fuentes.normal, _texto_cambio(nodo, cambio),
+                       tema.COLOR_TEXTO, center=(RECT_PANEL.centerx, Y_CONTROLES + 2))
+    if recursos.dinero >= costo:
+        detalle = f"Costo: ${formato_numero(costo)}   |   Dinero disponible: ${formato_numero(recursos.dinero)}"
+        color = tema.COLOR_TEXTO_SEC
+    else:
+        detalle = f"Costo: ${formato_numero(costo)}   |   Te faltan: ${formato_numero(costo - recursos.dinero)}"
+        color = tema.COLOR_ROJO
+    tema.dibujar_texto(pantalla, fuentes.pequena, detalle, color,
+                       center=(RECT_PANEL.centerx, Y_CONTROLES + 30))
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_COMPRAR, "Confirmar cambio",
+                       tema.COLOR_BOTON_OK, habilitado=recursos.dinero >= costo)
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_CANCELAR, "Cancelar",
+                       tema.COLOR_BOTON_PELIGRO)
+
+
+def dibujar_panel_detalle(pantalla, fuentes, nodo, recursos, cambio_pendiente=None):
     tema.dibujar_overlay(pantalla, 170)
     tema.dibujar_panel(pantalla, RECT_PANEL, radio=20)
 
@@ -179,11 +206,14 @@ def dibujar_panel_detalle(pantalla, fuentes, nodo, recursos):
             tema.dibujar_texto(pantalla, fuentes.normal, linea, tema.COLOR_CIAN, topleft=(x, y))
             y += 26
 
-    if estado == "desbloqueado":
-        _dibujar_controles(pantalla, fuentes, nodo)
+    if estado == "desbloqueado" and cambio_pendiente is None:
+        _dibujar_controles(pantalla, fuentes, nodo, recursos)
+
+    if estado == "desbloqueado" and cambio_pendiente is not None:
+        _dibujar_confirmacion(pantalla, fuentes, nodo, recursos, cambio_pendiente)
 
     if estado == "disponible":
         tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_COMPRAR, "Comprar", tema.COLOR_BOTON_OK)
         tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_CANCELAR, "Cancelar", tema.COLOR_BOTON_PELIGRO)
-    else:
+    elif cambio_pendiente is None:
         tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_CERRAR, "Cerrar", tema.COLOR_PANEL_CLARO)

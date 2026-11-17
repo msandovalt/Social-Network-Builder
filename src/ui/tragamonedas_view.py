@@ -13,11 +13,12 @@ import pygame
 
 from ui import tema
 from ui.animacion import pulso
-from ui.formato import formatear_efectos
+from ui.formato import formato_numero, formatear_efectos
 from ui.hub_view import RECT_AREA_MINIJUEGO
 from ui.modelos_2d import dibujar_modelo_recurso
 from minijuego.tragamonedas import (
-    SIMBOLOS, ETIQUETAS, RECOMPENSAS, GIRANDO, POR_RESOLVER, RESUELTO, INACTIVO,
+    SIMBOLOS, ETIQUETAS, RECOMPENSAS, MULTIPLICADOR_PREMIO_DINERO,
+    GIRANDO, POR_RESOLVER, RESUELTO, INACTIVO,
 )
 
 ANCHO_REEL = 170
@@ -55,7 +56,7 @@ RECTS_PREMIO = [
 ]
 
 _NOMBRES_SIMBOLO = {
-    "dinero": ("+$3.000", "Dinero"),
+    "dinero": ("", "Dinero"),
     "usuarios": ("+150", "Usuarios"),
     "reputacion": ("+6", "Reputación"),
 }
@@ -261,7 +262,14 @@ def progreso_premio(maquina, simbolo):
     return 0
 
 
-def _dibujar_tabla_premios(pantalla, fuentes, maquina, t):
+def _recompensa_visible(simbolo, maquina, recursos):
+    if simbolo == "dinero":
+        apuesta = maquina.apuesta if maquina.apuesta else maquina.costo(recursos)
+        return {"dinero": apuesta * MULTIPLICADOR_PREMIO_DINERO}
+    return RECOMPENSAS[simbolo]
+
+
+def _dibujar_tabla_premios(pantalla, fuentes, maquina, recursos, t):
     """Tres tarjetas de recompensa con mini-fichas reales y resaltado reactivo."""
     for idx, simbolo in enumerate(SIMBOLOS):
         rect = RECTS_PREMIO[idx]
@@ -301,6 +309,8 @@ def _dibujar_tabla_premios(pantalla, fuentes, maquina, t):
 
         # Valor y nombre del premio a la derecha
         cantidad_txt, nombre_txt = _NOMBRES_SIMBOLO[simbolo]
+        if simbolo == "dinero":
+            cantidad_txt = f"+${formato_numero(_recompensa_visible(simbolo, maquina, recursos)['dinero'])}"
         color_cant = tema.COLOR_TEXTO if ganador else tema.aclarar(color_sim, 0.25)
         tema.dibujar_texto(pantalla, fuentes.arbol, cantidad_txt, color_cant,
                            topleft=(rect.x + 68, rect.y + 6))
@@ -313,8 +323,13 @@ def _dibujar_tabla_premios(pantalla, fuentes, maquina, t):
                                tema.COLOR_AMARILLO, topright=(rect.right - 8, rect.y + 6))
 
 
-def _texto_recompensas():
-    partes = [f"{ETIQUETAS[s]} = {formatear_efectos(RECOMPENSAS[s])}" for s in SIMBOLOS]
+def _texto_recompensas(maquina, recursos):
+    partes = []
+    for simbolo in SIMBOLOS:
+        if simbolo == "dinero":
+            partes.append(f"{ETIQUETAS[simbolo]} = ×{MULTIPLICADOR_PREMIO_DINERO} apuesta")
+        else:
+            partes.append(f"{ETIQUETAS[simbolo]} = {formatear_efectos(RECOMPENSAS[simbolo])}")
     return "Tres iguales:   " + "    ".join(partes)
 
 
@@ -325,7 +340,11 @@ def dibujar_tragamonedas(pantalla, fuentes, maquina, recursos, t):
                        topleft=(area.x + 32, area.y + 20))
     tema.dibujar_texto(pantalla, fuentes.arbol_pequena, "Alinea 3 fichas iguales",
                        tema.COLOR_TEXTO_SEC, topleft=(area.x + 32, area.y + 56))
-    _dibujar_tabla_premios(pantalla, fuentes, maquina, t)
+    if maquina.estado == GIRANDO:
+        restante = max(0.0, maquina.tiempo_limite - maquina.tiempo_giro)
+        tema.dibujar_texto(pantalla, fuentes.arbol_pequena, f"Tiempo: {restante:.1f}s",
+                           tema.COLOR_AMARILLO, topleft=(area.x + 32, area.y + 76))
+    _dibujar_tabla_premios(pantalla, fuentes, maquina, recursos, t)
 
     _dibujar_medidor_velocidad(pantalla, fuentes, recursos, t)
     for i, rect in enumerate(RECTS_REEL):

@@ -54,7 +54,8 @@ from ui.resumen_view import (
 )
 from ui.hub_view import (
     dibujar_principal, dibujar_base, dibujar_boton_volver,
-    RECT_BOTON_ARBOL, RECT_BOTON_MAPA, RECT_BOTON_VOLVER,
+    RECT_BOTON_ARBOL, RECT_BOTON_BIENESTAR, RECT_CAMPANIA_CONFIRMAR,
+    RECT_CAMPANIA_CANCELAR, RECT_BOTON_MAPA, RECT_BOTON_VOLVER,
 )
 from ui.accesibilidad_view import dibujar_accesibilidad, RECTS_OPCION
 from ui.ayuda_contenido import TOTAL_PAGINAS, INDICE_ACCESIBILIDAD
@@ -130,6 +131,9 @@ class Juego:
         self.tiempo_fin = 0.0      # segundos en la pantalla de fin (para el confeti)
         self._confeti = 0.0
         self.nodo_seleccionado = None
+        self.cambio_nodo_pendiente = None
+        self.campania_bienestar_pendiente = False
+        self.ronda_ultima_campania = None
         self.region_seleccionada = None
         self.particulas = SistemaParticulas()
         self.contadores = {
@@ -225,6 +229,19 @@ class Juego:
             self._abrir(ACCESIBILIDAD)
 
     def _click_principal(self, pos):
+        if self.campania_bienestar_pendiente:
+            if RECT_CAMPANIA_CONFIRMAR.collidepoint(pos):
+                if self.puede_aplicar_campania_bienestar():
+                    costo = self.costo_campania_bienestar()
+                    self.recursos.aplicar_efectos({"dinero": -costo, "bienestar": 10})
+                    self.ronda_ultima_campania = self.rondas.numero
+                    self.campania_bienestar_pendiente = False
+                    self.audio.clic_ui()
+            elif RECT_CAMPANIA_CANCELAR.collidepoint(pos):
+                self.campania_bienestar_pendiente = False
+                self.audio.clic_ui()
+            return
+
         if RECT_BOTON_PAUSA.collidepoint(pos):
             self.audio.clic_ui()
             self._pausar()
@@ -234,11 +251,26 @@ class Juego:
         elif RECT_BOTON_ARBOL.collidepoint(pos):
             self.audio.clic_ui()
             self._ir_a(ARBOL)
+        elif RECT_BOTON_BIENESTAR.collidepoint(pos):
+            if self.puede_aplicar_campania_bienestar():
+                self.campania_bienestar_pendiente = True
+                self.audio.clic_ui()
         elif RECT_BOTON_MAPA.collidepoint(pos):
             self.audio.clic_ui()
             self._ir_a(MAPA)
         else:
             self._click_tragamonedas(pos)
+
+    def costo_campania_bienestar(self):
+        regiones = len(self.mundo.conquistadas())
+        return 300 + max(0, regiones - 1) * 50
+
+    def puede_aplicar_campania_bienestar(self):
+        return (
+            self.recursos.bienestar < 100
+            and self.recursos.dinero >= self.costo_campania_bienestar()
+            and self.ronda_ultima_campania != self.rondas.numero
+        )
 
     def _click_tragamonedas(self, pos):
         for i, rect in enumerate(RECTS_REEL):
@@ -276,6 +308,17 @@ class Juego:
 
     def _click_panel_nodo(self, pos):
         nodo = self.nodo_seleccionado
+        if self.cambio_nodo_pendiente is not None:
+            if RECT_BOTON_COMPRAR.collidepoint(pos):
+                cambio = self.cambio_nodo_pendiente
+                if nodo.confirmar_cambio(cambio["valor"], self.recursos):
+                    self.cambio_nodo_pendiente = None
+                    self.audio.clic_ui()
+            elif RECT_BOTON_CANCELAR.collidepoint(pos):
+                self.cambio_nodo_pendiente = None
+                self.audio.clic_ui()
+            return
+
         if evaluar_estado(nodo, self.recursos) == "disponible":
             if RECT_BOTON_COMPRAR.collidepoint(pos):
                 comprado = nodo.desbloquear(self.recursos)
@@ -288,7 +331,10 @@ class Juego:
                 self.audio.clic_ui()
                 self.nodo_seleccionado = None
         else:
-            if manejar_click_controles(nodo, pos):
+            cambio = manejar_click_controles(nodo, pos)
+            if cambio is not None:
+                if nodo.costo_cambio(cambio["valor"]) > 0:
+                    self.cambio_nodo_pendiente = cambio
                 self.audio.clic_ui()
                 return
             if RECT_BOTON_CERRAR.collidepoint(pos):
@@ -320,9 +366,14 @@ class Juego:
             x, y = POSICIONES_REGION[id_region]
             self.particulas.emitir(x, y, tema.COLOR_VERDE, 30)
             self.particulas.emitir(x, y, (255, 255, 255), 8)
-            if self.mundo.todas_conquistadas():  # meta cumplida: ganaste
-                self.rondas.finalizar(VICTORIA)
-                self._ir_a(FIN)
+            self._comprobar_victoria()
+
+    def _comprobar_victoria(self):
+        capacidad = self.mundo.capacidad_total()
+        if (self.mundo.todas_conquistadas() and capacidad > 0
+                and self.recursos.usuarios >= capacidad):
+            self.rondas.finalizar(VICTORIA)
+            self._ir_a(FIN)
 
     def _click_pausa(self, pos):
         if RECT_BOTON_REANUDAR.collidepoint(pos):
@@ -416,7 +467,7 @@ class Juego:
                 if self.maquina.resultado_tipo is not None:
                     self._celebrar(self.maquina.resultado_tipo)
 
-        if self.estado in PANTALLAS_DE_JUEGO:
+        if self.estado == PRINCIPAL and not self.campania_bienestar_pendiente:
             self.rondas.actualizar(dt, self.arbol, self.recursos, self.mundo)
             if self.rondas.terminada:
                 self._ir_a(FIN)
@@ -429,6 +480,7 @@ class Juego:
                         critico=(evento.evento.tono == NEGATIVO and not evento.mitigado)
                     )
                 self._vigilar_bienestar()
+                self._comprobar_victoria()
 
         if self.estado == FIN and self.rondas.resultado == VICTORIA:
             self._lanzar_confeti(dt)
@@ -471,6 +523,7 @@ class Juego:
             "reputacion": self.recursos.reputacion,
             "regiones": len(self.mundo.conquistadas()),
             "total_regiones": len(self.mundo.regiones),
+            "capacidad_usuarios": self.mundo.capacidad_total(),
             "historial": list(self.rondas.historial),
         }
         resumen["calificacion"] = calcular_calificacion(self.rondas.resultado, resumen)
@@ -526,7 +579,10 @@ class Juego:
             dibujar_boton_volver(pantalla, f)
             dibujar_arbol(pantalla, self.arbol, f, self.recursos, self.tiempo)
             if nodo_seleccionado is not None:
-                dibujar_panel_detalle(pantalla, f, nodo_seleccionado, self.recursos)
+                dibujar_panel_detalle(
+                    pantalla, f, nodo_seleccionado, self.recursos,
+                    self.cambio_nodo_pendiente,
+                )
         elif estado == MAPA:
             dibujar_mapa(pantalla, self)
             dibujar_boton_volver(pantalla, f)
