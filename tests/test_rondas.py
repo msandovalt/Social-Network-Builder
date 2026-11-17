@@ -28,12 +28,13 @@ class TestAvanzarRonda(unittest.TestCase):
         self.assertEqual(self.recursos.bienestar, 70)
 
     def test_interruptor_encendido_aplica_sus_efectos_cada_ronda(self):
-        scroll = self.feed.hijos[1]  # crecimiento +5%, engagement +0.08, bienestar -4
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
+        scroll = self.arbol.nodo_por_id("feed_scroll")
         scroll.desbloquear(self.recursos)
         scroll.alternar_interruptor(self.recursos)
 
         avanzar_ronda(self.arbol, self.recursos)
-        self.assertEqual(self.recursos.usuarios, 525)       # 500 * 5%
+        self.assertEqual(self.recursos.usuarios, 535)       # Feed básico + scroll: 7%
         self.assertAlmostEqual(self.recursos.engagement, 38)  # 30 + 0.08*100
         self.assertAlmostEqual(self.recursos.bienestar, 66)
 
@@ -41,34 +42,40 @@ class TestAvanzarRonda(unittest.TestCase):
         self.assertAlmostEqual(self.recursos.bienestar, 62)
 
     def test_interruptor_apagado_no_cambia_nada(self):
-        scroll = self.feed.hijos[1]
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
+        scroll = self.arbol.nodo_por_id("feed_scroll")
         scroll.desbloquear(self.recursos)
         avanzar_ronda(self.arbol, self.recursos)
-        self.assertEqual(self.recursos.usuarios, 500)
+        self.assertEqual(self.recursos.usuarios, 510)
         self.assertEqual(self.recursos.bienestar, 70)
 
     def test_dial_escala_los_efectos_por_ronda(self):
-        algoritmo = self.feed.hijos[2]  # usuarios +120, engagement +0.1, bienestar -6
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
         algoritmo.desbloquear(self.recursos)
         algoritmo.ajustar_dial(50, self.recursos)
 
         avanzar_ronda(self.arbol, self.recursos)
-        self.assertEqual(self.recursos.usuarios, 560)
+        self.assertEqual(self.recursos.usuarios, 570)
         self.assertAlmostEqual(self.recursos.engagement, 35)
         self.assertAlmostEqual(self.recursos.bienestar, 67)
 
     def test_bifurcacion_con_costo_recurrente_baja_el_dinero(self):
         seguridad = self.arbol.raiz.hijos[2]
-        avanzada = seguridad.hijos[1]  # "humana": dinero -300 por ronda
+        basica = seguridad.hijos[0]
+        avanzada = basica.hijos[0]
+        basica.desbloquear(self.recursos)
         avanzada.desbloquear(self.recursos)
         avanzada.elegir_variante("humana", self.recursos)
         antes = self.recursos.dinero
         avanzar_ronda(self.arbol, self.recursos)
-        self.assertEqual(self.recursos.dinero, antes - 300)
+        self.assertEqual(self.recursos.dinero, antes - 250)
 
     def test_quiebra_cuando_el_dinero_queda_negativo(self):
         seguridad = self.arbol.raiz.hijos[2]
-        avanzada = seguridad.hijos[1]
+        basica = seguridad.hijos[0]
+        avanzada = basica.hijos[0]
+        basica.desbloquear(self.recursos)
         avanzada.desbloquear(self.recursos)
         avanzada.elegir_variante("humana", self.recursos)
         self.recursos.dinero = 100
@@ -98,12 +105,13 @@ class TestAvanzarRonda(unittest.TestCase):
 
     def test_el_ingreso_de_las_regiones_se_suma_al_de_los_nodos(self):
         mundo = Mundo.construir_mundo_inicial()
-        algoritmo = self.feed.hijos[2]  # usuarios +120 al 100%
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
         algoritmo.desbloquear(self.recursos)
         algoritmo.ajustar_dial(100, self.recursos)
         usuarios = self.recursos.usuarios
         avanzar_ronda(self.arbol, self.recursos, mundo)
-        self.assertEqual(self.recursos.usuarios, usuarios + 120 + 15)
+        self.assertEqual(self.recursos.usuarios, usuarios + 120 + 10 + 15)
 
 
 class TestTopeDeUsuarios(unittest.TestCase):
@@ -173,6 +181,7 @@ class TestFugaPorBajoBienestar(unittest.TestCase):
     def test_bienestar_cero_impide_que_bonos_recurrentes_anulen_la_fuga(self):
         mundo = Mundo.construir_mundo_inicial()
         self.recursos.bienestar = 0
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
         algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
         algoritmo.desbloquear(self.recursos)
         algoritmo.ajustar_dial(100, self.recursos)
@@ -181,13 +190,14 @@ class TestFugaPorBajoBienestar(unittest.TestCase):
         self.assertLess(self.recursos.usuarios, usuarios_antes)
 
     def test_la_bajada_de_bienestar_de_un_nodo_afecta_la_misma_ronda(self):
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
         scroll = self.arbol.nodo_por_id("feed_scroll")
         scroll.desbloquear(self.recursos)
         scroll.alternar_interruptor(self.recursos)
         self.recursos.bienestar = 41
         avanzar_ronda(self.arbol, self.recursos)
         self.assertEqual(self.recursos.bienestar, 37)
-        self.assertLess(self.recursos.usuarios, round(1000 * 1.05))
+        self.assertLess(self.recursos.usuarios, 1000 * 1.07)
 
     def test_la_fuga_nunca_deja_usuarios_negativos(self):
         self.recursos.usuarios = 3

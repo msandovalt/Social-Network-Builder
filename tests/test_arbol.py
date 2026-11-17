@@ -22,6 +22,12 @@ class TestArbol(unittest.TestCase):
         feed = self.arbol.raiz.hijos[0]
         basico = feed.hijos[0]
         self.assertFalse(basico.puede_desbloquearse(self.recursos))
+        avanzada = self.arbol.nodo_por_id("seguridad_avanzada")
+        self.assertEqual(avanzada.padre.id, "seguridad_basica")
+        self.assertFalse(avanzada.puede_desbloquearse(self.recursos))
+        grupos = self.arbol.nodo_por_id("comunidad_grupos")
+        verificacion = self.arbol.nodo_por_id("comunidad_verificacion")
+        self.assertIs(grupos.padre, verificacion.padre)
 
     def test_desbloqueo_en_orden_correcto(self):
         feed = self.arbol.raiz.hijos[0]
@@ -32,10 +38,12 @@ class TestArbol(unittest.TestCase):
         self.assertTrue(basico.desbloqueado)
 
     def test_dial_escala_el_efecto_segun_su_valor(self):
-        feed = self.arbol.raiz.hijos[0]
-        algoritmo = feed.hijos[2]  # Algoritmo es el tercer hijo de Feed
+        feed = self.arbol.nodo_por_id("feed")
+        basico = self.arbol.nodo_por_id("feed_basico")
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
         self.arbol.raiz.desbloquear(self.recursos)
         feed.desbloquear(self.recursos)
+        basico.desbloquear(self.recursos)
         algoritmo.desbloquear(self.recursos)
 
         algoritmo.ajustar_dial(50, self.recursos)
@@ -43,10 +51,12 @@ class TestArbol(unittest.TestCase):
         self.assertAlmostEqual(efecto["bienestar"], -3)  # -6 * 0.5
 
     def test_interruptor_apagado_no_aporta_efecto(self):
-        feed = self.arbol.raiz.hijos[0]
-        scroll = feed.hijos[1]  # Scroll infinito es el segundo hijo de Feed
+        feed = self.arbol.nodo_por_id("feed")
+        basico = self.arbol.nodo_por_id("feed_basico")
+        scroll = self.arbol.nodo_por_id("feed_scroll")
         self.arbol.raiz.desbloquear(self.recursos)
         feed.desbloquear(self.recursos)
+        basico.desbloquear(self.recursos)
         scroll.desbloquear(self.recursos)
 
         self.assertEqual(scroll.efecto_por_ronda(), {})
@@ -54,11 +64,10 @@ class TestArbol(unittest.TestCase):
         self.assertNotEqual(scroll.efecto_por_ronda(), {})
 
     def test_no_se_puede_desbloquear_sin_dinero_suficiente(self):
-        feed = self.arbol.raiz.hijos[0]
-        algoritmo = feed.hijos[2]  # cuesta 5000
-        self.arbol.raiz.desbloquear(self.recursos)
-        feed.desbloquear(self.recursos)
-        pobres = Recursos(dinero=100)
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
+        pobres = Recursos(dinero=2100)
+        self.arbol.desbloquear_gratuitos(pobres)
+        self.arbol.nodo_por_id("feed_basico").desbloquear(pobres)
         self.assertFalse(algoritmo.puede_desbloquearse(pobres))
         self.assertFalse(algoritmo.desbloquear(pobres))
         self.assertFalse(algoritmo.desbloqueado)
@@ -84,15 +93,15 @@ class TestArbol(unittest.TestCase):
     def test_desbloquear_gratuitos_abre_raiz_y_categorias_pero_no_lo_que_cuesta(self):
         self.arbol.desbloquear_gratuitos(self.recursos)
         nodos = {n.id: n for n in self.arbol.recorrido_bfs()}
-        for id_nodo in ("red_social", "feed", "comunidad", "seguridad"):
+        for id_nodo in ("red_social", "feed", "comunidad", "seguridad", "monetizacion", "marca"):
             self.assertTrue(nodos[id_nodo].desbloqueado, id_nodo)
         self.assertFalse(nodos["feed_basico"].desbloqueado)
         self.assertEqual(self.recursos.dinero, 10000)
 
     def test_dial_se_mantiene_entre_0_y_100(self):
-        feed = self.arbol.raiz.hijos[0]
-        algoritmo = feed.hijos[2]
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
         self.arbol.desbloquear_gratuitos(self.recursos)
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
         algoritmo.desbloquear(self.recursos)
         algoritmo.ajustar_dial(250, self.recursos)
         self.assertEqual(algoritmo.valor, 100)
@@ -100,8 +109,8 @@ class TestArbol(unittest.TestCase):
         self.assertEqual(algoritmo.valor, 0)
 
     def test_controles_se_ignoran_si_el_nodo_no_esta_desbloqueado(self):
-        feed = self.arbol.raiz.hijos[0]
-        scroll, algoritmo = feed.hijos[1], feed.hijos[2]
+        scroll = self.arbol.nodo_por_id("feed_scroll")
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
         scroll.alternar_interruptor(self.recursos)
         algoritmo.ajustar_dial(80, self.recursos)
         self.assertFalse(scroll.activo)
@@ -130,10 +139,12 @@ class TestArbol(unittest.TestCase):
 
     def test_efectos_totales_suman_interruptores_diales_y_bifurcaciones(self):
         recursos = Recursos(dinero=100000)
-        feed, comunidad = self.arbol.raiz.hijos[0], self.arbol.raiz.hijos[1]
-        scroll, algoritmo = feed.hijos[1], feed.hijos[2]
-        mensajes = comunidad.hijos[1]
+        basico = self.arbol.nodo_por_id("feed_basico")
+        scroll = self.arbol.nodo_por_id("feed_scroll")
+        algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
+        mensajes = self.arbol.nodo_por_id("comunidad_mensajes")
         self.arbol.desbloquear_gratuitos(recursos)
+        basico.desbloquear(recursos)
         for nodo in (scroll, algoritmo, mensajes):
             nodo.desbloquear(recursos)
 
@@ -147,6 +158,7 @@ class TestArbol(unittest.TestCase):
     def test_ajustar_dial_cobra_segun_el_cambio(self):
         algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
         self.arbol.desbloquear_gratuitos(self.recursos)
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
         algoritmo.desbloquear(self.recursos)
         dinero_antes = self.recursos.dinero
         self.assertTrue(algoritmo.ajustar_dial(25, self.recursos))
@@ -156,6 +168,7 @@ class TestArbol(unittest.TestCase):
     def test_cambiar_interruptor_cobra_el_costo_de_reconfiguracion(self):
         scroll = self.arbol.nodo_por_id("feed_scroll")
         self.arbol.desbloquear_gratuitos(self.recursos)
+        self.arbol.nodo_por_id("feed_basico").desbloquear(self.recursos)
         scroll.desbloquear(self.recursos)
         dinero_antes = self.recursos.dinero
         self.assertTrue(scroll.alternar_interruptor(self.recursos))
@@ -173,8 +186,9 @@ class TestArbol(unittest.TestCase):
 
     def test_dial_no_cambia_si_no_alcanza_el_dinero_para_el_ajuste(self):
         algoritmo = self.arbol.nodo_por_id("feed_algoritmo")
-        recursos = Recursos(dinero=5010)
+        recursos = Recursos(dinero=7010)
         self.arbol.desbloquear_gratuitos(recursos)
+        self.arbol.nodo_por_id("feed_basico").desbloquear(recursos)
         algoritmo.desbloquear(recursos)
         self.assertFalse(algoritmo.ajustar_dial(100, recursos))
         self.assertEqual(algoritmo.valor, 0)

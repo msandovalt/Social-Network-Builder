@@ -40,10 +40,13 @@ Requisito = namedtuple("Requisito", "tipo etiqueta necesario actual cumplido")
 BIEN_CENTRO, BIEN_NORTE, BIEN_AFRICA, BIEN_EUROPA, BIEN_MEDIO, BIEN_ASIA, BIEN_OCEANIA = 50, 40, 40, 50, 45, 50, 55
 REP_CENTRO, REP_NORTE, REP_AFRICA, REP_EUROPA, REP_MEDIO, REP_ASIA, REP_OCEANIA = 45, 50, 45, 60, 55, 65, 70
 
+USUARIOS_CENTRO, USUARIOS_NORTE, USUARIOS_AFRICA, USUARIOS_EUROPA = 1000, 2500, 3500, 5000
+USUARIOS_MEDIO, USUARIOS_ASIA, USUARIOS_OCEANIA = 7500, 13000, 21000
+
 
 # Capacidad de usuarios que aporta cada región (se ajusta jugando)
-CAP_SUDAMERICA, CAP_CENTROAMERICA, CAP_NORTEAMERICA, CAP_AFRICA = 1500, 1000, 4000, 3000
-CAP_EUROPA, CAP_MEDIO, CAP_ASIA, CAP_OCEANIA = 3500, 2000, 8000, 1000
+CAP_SUDAMERICA, CAP_CENTROAMERICA, CAP_NORTEAMERICA, CAP_AFRICA = 2000, 1500, 4500, 3500
+CAP_EUROPA, CAP_MEDIO, CAP_ASIA, CAP_OCEANIA = 4000, 2500, 8000, 3000
 
 
 class Region:
@@ -193,35 +196,35 @@ class Mundo:
             Region("centroamerica", "Centroamérica",
                    "Puente entre dos continentes. Un feed básico basta para empezar.",
                    {"usuarios": 15, "dinero": 100},
-                   nodos=("feed_basico",), usuarios=600, reputacion=REP_CENTRO,
+                   nodos=("feed_basico",), usuarios=USUARIOS_CENTRO, reputacion=REP_CENTRO,
                    bienestar=BIEN_CENTRO, capacidad=CAP_CENTROAMERICA),
             Region("norteamerica", "Norteamérica",
                    "Mercado grande y rico, pero exige comunidades activas y buena reputación.",
                    {"usuarios": 25, "dinero": 450},
-                   nodos=("comunidad_grupos",), usuarios=2000, reputacion=REP_NORTE, bienestar=BIEN_NORTE, capacidad=CAP_NORTEAMERICA),
+                   nodos=("comunidad_grupos",), usuarios=USUARIOS_NORTE, reputacion=REP_NORTE, bienestar=BIEN_NORTE, capacidad=CAP_NORTEAMERICA),
             Region("africa", "África",
                    "Población joven en pleno crecimiento. Necesitas seguridad básica para operar.",
                    {"usuarios": 40, "dinero": 60},
-                   nodos=("seguridad_basica",), usuarios=1800, reputacion=REP_AFRICA,
+                   nodos=("seguridad_basica",), usuarios=USUARIOS_AFRICA, reputacion=REP_AFRICA,
                    bienestar=BIEN_AFRICA, capacidad=CAP_AFRICA),
             Region("europa", "Europa",
                    "Leyes estrictas de privacidad: sin seguridad avanzada no puedes entrar.",
                    {"usuarios": 20, "dinero": 350, "reputacion": 0.5},
-                   nodos=("seguridad_avanzada",), usuarios=3500, reputacion=REP_EUROPA, bienestar=BIEN_EUROPA, capacidad=CAP_EUROPA),
+                   nodos=("seguridad_avanzada",), usuarios=USUARIOS_EUROPA, reputacion=REP_EUROPA, bienestar=BIEN_EUROPA, capacidad=CAP_EUROPA),
             Region("medio_oriente", "Medio Oriente",
                    "Encrucijada entre tres continentes. La confianza entre usuarios es clave.",
                    {"usuarios": 30, "dinero": 300},
-                   nodos=("comunidad_verificacion",), usuarios=5000, reputacion=REP_MEDIO,
+                   nodos=("comunidad_verificacion",), usuarios=USUARIOS_MEDIO, reputacion=REP_MEDIO,
                    bienestar=BIEN_MEDIO, capacidad=CAP_MEDIO),
             Region("asia", "Asia",
                    "El mayor mercado del planeta. Exige un feed inteligente y cuentas verificadas.",
                    {"usuarios": 60, "dinero": 250},
-                   nodos=("feed_algoritmo", "comunidad_verificacion"), usuarios=8000,
+                   nodos=("feed_algoritmo", "comunidad_verificacion"), usuarios=USUARIOS_ASIA,
                    reputacion=REP_ASIA, bienestar=BIEN_ASIA, capacidad=CAP_ASIA),
             Region("oceania", "Oceanía",
                    "Islas lejanas y exigentes: comunidades sólidas y una reputación impecable.",
                    {"usuarios": 25, "dinero": 280},
-                   nodos=("seguridad_basica", "comunidad_grupos"), usuarios=12000, reputacion=REP_OCEANIA, bienestar=BIEN_OCEANIA, capacidad=CAP_OCEANIA),
+                   nodos=("seguridad_basica", "comunidad_grupos"), usuarios=USUARIOS_OCEANIA, reputacion=REP_OCEANIA, bienestar=BIEN_OCEANIA, capacidad=CAP_OCEANIA),
         )
         for region in regiones:
             mundo.agregar_region(region)

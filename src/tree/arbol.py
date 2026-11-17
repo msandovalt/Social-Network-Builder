@@ -53,10 +53,7 @@ class Arbol:
 
     @staticmethod
     def construir_arbol_inicial():
-        """Construye el árbol tal como quedó definido en el documento de diseño:
-        Red social -> Feed / Comunidad / Seguridad, cada rama con sus nodos
-        fijos e interactivos. Los costos y efectos numéricos son un punto de
-        partida provisional, se calibran jugando."""
+        """Construye el árbol de producto, comunidad, confianza y negocio."""
         raiz = Nodo("red_social", "Red social", "fijo", costo=0,
                      descripcion="El punto de partida de tu plataforma. No tiene costo, se desbloquea automáticamente.")
 
@@ -74,45 +71,109 @@ class Arbol:
                           efectos={"usuarios": 120, "engagement": 0.1, "bienestar": -6},
                           descripcion="Dial de agresividad (0-100): entre más alto, más usuarios y engagement, "
                                       "pero más baja el bienestar.")
+        saludable = Nodo("feed_saludable", "Feed saludable", "interruptor", costo=3800,
+                          efectos={"bienestar": 1, "reputacion": 0.5,
+                                   "crecimiento": -0.01, "engagement": -0.01},
+                          descripcion="Cada ronda mejora un poco el bienestar y la confianza, a cambio de reducir "
+                                      "el crecimiento y el engagement. Puedes apagarlo si necesitas acelerar.")
         feed.agregar_hijo(basico)
-        feed.agregar_hijo(scroll_infinito)
-        feed.agregar_hijo(algoritmo)
+        basico.agregar_hijo(scroll_infinito)
+        basico.agregar_hijo(algoritmo)
+        basico.agregar_hijo(saludable)
 
         # --- Comunidad ---
         comunidad = Nodo("comunidad", "Comunidad", "fijo", costo=0,
                           descripcion="Categoría de funcionalidades relacionadas a la comunidad de usuarios.")
-        grupos = Nodo("comunidad_grupos", "Grupos", "fijo", costo=3000,
-                       efectos={"bienestar": 2},
-                       descripcion="Efecto fijo: mejora el bienestar y reduce la fuga de usuarios en eventos negativos.")
+        grupos = Nodo("comunidad_grupos", "Grupos", "interruptor", costo=3000,
+                       efectos={"bienestar": 1, "engagement": 0.01},
+                       descripcion="Cada ronda activa, los grupos fortalecen el bienestar y la participación.")
         mensajes = Nodo("comunidad_mensajes", "Mensajes", "bifurcacion", costo=4000, variantes={
             "cifrado": {"efectos": {"reputacion": 5, "bienestar": 3, "crecimiento": -0.01}},
             "abierta": {"efectos": {"crecimiento": 0.03, "bienestar": -2}},
         }, descripcion="Bifurcación: cifrado extremo a extremo (más privado, más caro) o mensajería abierta "
                        "(más barata, más riesgo de acoso).")
         verificacion_paga = Nodo("comunidad_verificacion", "Verificación paga", "interruptor", costo=4000,
-                                  efectos={"dinero": 500, "bienestar": -3, "reputacion": -2},
+                                  efectos={"dinero": 450, "bienestar": -1, "reputacion": -1,
+                                           "engagement": 0.02},
                                   descripcion="Interruptor: mientras esté encendida, genera dinero recurrente, "
-                                              "pero baja bienestar y reputación.")
+                                              "pero desgasta ligeramente el bienestar y la reputación.")
+        consejo = Nodo("comunidad_consejo", "Consejo de usuarios", "interruptor", costo=5200,
+                        efectos={"bienestar": 1, "reputacion": 1, "dinero": -180},
+                        descripcion="Cada ronda financia la participación de usuarios: mejora el bienestar y la "
+                                    "reputación, con un costo operativo.")
         comunidad.agregar_hijo(grupos)
         comunidad.agregar_hijo(mensajes)
         comunidad.agregar_hijo(verificacion_paga)
+        comunidad.agregar_hijo(consejo)
 
         # --- Seguridad ---
         seguridad = Nodo("seguridad", "Seguridad", "fijo", costo=0,
                           descripcion="Categoría de funcionalidades relacionadas a la seguridad y moderación.")
         basica = Nodo("seguridad_basica", "Básica", "fijo", costo=2500,
-                       efectos={"reputacion": 3, "bienestar": 2},
-                       descripcion="Efecto fijo: mejora reputación y bienestar.")
+                       efectos={"reputacion": 3, "bienestar": 1},
+                       descripcion="Al comprarla, mejora la reputación y el bienestar de la comunidad.")
         avanzada = Nodo("seguridad_avanzada", "Avanzada", "bifurcacion", costo=4500, variantes={
-            "humana": {"efectos": {"bienestar": 5, "reputacion": 4, "dinero": -300}},
-            "automatica": {"efectos": {"bienestar": 1, "reputacion": 1}},
-        }, descripcion="Bifurcación: moderación humana (cara, más efectiva) o filtros automáticos "
-                       "(baratos, imperfectos).")
+            "humana": {"efectos": {"bienestar": 2, "reputacion": 1, "dinero": -250}},
+            "automatica": {"efectos": {"bienestar": 1, "reputacion": 0.5, "dinero": -80}},
+        }, descripcion="Bifurcación con efecto por ronda: la moderación humana es más efectiva y costosa; "
+                       "los filtros automáticos son baratos, pero ayudan menos.")
+        privacidad = Nodo("seguridad_privacidad", "Privacidad", "fijo", costo=6000,
+                           efectos={"reputacion": 5},
+                           descripcion="Una inversión inicial en cifrado y protección de datos que fortalece la confianza.")
+        transparencia = Nodo("seguridad_transparencia", "Transparencia", "interruptor", costo=5000,
+                              efectos={"reputacion": 1, "dinero": -120},
+                              descripcion="Publica informes y explica tus decisiones. Cada ronda mejora la reputación "
+                                          "con un costo de operación.")
         seguridad.agregar_hijo(basica)
-        seguridad.agregar_hijo(avanzada)
+        basica.agregar_hijo(avanzada)
+        basica.agregar_hijo(privacidad)
+        basica.agregar_hijo(transparencia)
+
+        # --- Monetización ---
+        monetizacion = Nodo("monetizacion", "Monetización", "fijo", costo=0,
+                             descripcion="Modelos para sostener económicamente la plataforma.")
+        anuncios = Nodo("monetizacion_anuncios", "Anuncios", "interruptor", costo=4500,
+                         efectos={"dinero": 850, "engagement": 0.02,
+                                  "bienestar": -1, "reputacion": -1},
+                         descripcion="Cada ronda genera ingresos y actividad, pero la publicidad invasiva "
+                                     "desgasta el bienestar y la confianza.")
+        suscripcion = Nodo("monetizacion_suscripcion", "Suscripción", "bifurcacion", costo=5200, variantes={
+            "accesible": {"efectos": {"dinero": 450, "crecimiento": -0.005,
+                                       "bienestar": 1, "reputacion": 1}},
+            "premium": {"efectos": {"dinero": 750, "crecimiento": -0.015,
+                                     "bienestar": 1, "reputacion": 2}},
+        }, descripcion="Elige suscripción accesible (más alcance) o prémium (más ingresos y confianza, "
+                       "pero menos crecimiento). Los efectos son por ronda.")
+        datos = Nodo("monetizacion_datos", "Venta de datos", "dial", costo=6500,
+                      efectos={"dinero": 1000, "bienestar": -1, "reputacion": -4},
+                      descripcion="Dial de intensidad: monetiza datos y atención, con ingresos recurrentes y "
+                                  "un costo creciente para el bienestar y la confianza.")
+        monetizacion.agregar_hijo(anuncios)
+        monetizacion.agregar_hijo(suscripcion)
+        monetizacion.agregar_hijo(datos)
+
+        # --- Marca y crecimiento ---
+        marca = Nodo("marca", "Marca", "fijo", costo=0,
+                     descripcion="Acciones para atraer usuarios y construir una imagen pública.")
+        referidos = Nodo("marketing_referidos", "Referidos", "interruptor", costo=3500,
+                          efectos={"usuarios": 70, "dinero": -220},
+                          descripcion="Cada ronda atrae usuarios nuevos, pero requiere incentivos y presupuesto.")
+        creadores = Nodo("marketing_creadores", "Creadores", "bifurcacion", costo=5000, variantes={
+            "viral": {"efectos": {"usuarios": 140, "engagement": 0.02, "dinero": -350}},
+            "comunidad": {"efectos": {"usuarios": 80, "reputacion": 1, "dinero": -200}},
+        }, descripcion="Alianza recurrente: una campaña viral crece más y cuesta más; una comunitaria "
+                       "crece menos y fortalece la reputación.")
+        campana = Nodo("marketing_campana", "Campaña de marca", "fijo", costo=6000,
+                        descripcion="Desbloquea campañas puntuales para reparar la imagen de la red. "
+                                    "Cada campaña tiene un costo que escala con el tamaño de la comunidad.")
+        marca.agregar_hijo(referidos)
+        marca.agregar_hijo(creadores)
+        marca.agregar_hijo(campana)
 
         raiz.agregar_hijo(feed)
         raiz.agregar_hijo(comunidad)
         raiz.agregar_hijo(seguridad)
+        raiz.agregar_hijo(monetizacion)
+        raiz.agregar_hijo(marca)
 
         return Arbol(raiz)

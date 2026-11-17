@@ -290,32 +290,36 @@ def dibujar_principal(pantalla, juego):
                            tema.COLOR_TEXTO_SEC, topleft=(MARGEN, 96))
     tema.dibujar_panel(pantalla, RECT_AREA_MINIJUEGO, radio=22)
     tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_ARBOL, "Árbol", tema.COLOR_ACENTO, radio=16)
-    costo_campania = juego.costo_campania_bienestar()
-    if juego.campania_bienestar_pendiente:
+    costo_campania = juego.costo_campania_marca()
+    if juego.campania_marca_pendiente:
         tema.dibujar_texto(
             pantalla, fuentes.pequena,
-            f"¿Aplicar +10 bienestar por ${formato_numero(costo_campania)}?",
-            tema.COLOR_TEXTO_SEC, center=(RECT_BOTON_BIENESTAR.centerx, 590),
+            f"¿Invertir ${formato_numero(costo_campania)}? +5 bienestar y +3 reputación",
+            tema.COLOR_TEXTO_SEC, center=(ANCHO // 2, 590),
         )
         tema.dibujar_boton(pantalla, fuentes.pequena, RECT_CAMPANIA_CONFIRMAR,
                            "Confirmar", tema.COLOR_BOTON_OK,
-                           habilitado=juego.puede_aplicar_campania_bienestar(), radio=12)
+                           habilitado=juego.puede_aplicar_campania_marca(), radio=12)
         tema.dibujar_boton(pantalla, fuentes.pequena, RECT_CAMPANIA_CANCELAR,
                            "Cancelar", tema.COLOR_BOTON_PELIGRO, radio=12)
     else:
-        disponible = juego.puede_aplicar_campania_bienestar()
-        if juego.recursos.bienestar >= 100:
-            estado_campania = "Bienestar al máximo"
-        elif juego.ronda_ultima_campania == juego.rondas.numero:
-            estado_campania = "Una campaña por ronda"
+        disponible = juego.puede_aplicar_campania_marca()
+        nodo_campana = juego.arbol.nodo_por_id("marketing_campana")
+        if not nodo_campana.desbloqueado:
+            estado_campania = "Desbloquea Campaña de marca en el árbol"
+        elif juego.rondas_hasta_campania_disponible() > 0:
+            faltan_rondas = juego.rondas_hasta_campania_disponible()
+            estado_campania = f"Disponible en {faltan_rondas} rondas"
+        elif juego.recursos.bienestar >= 100 and juego.recursos.reputacion >= 100:
+            estado_campania = "Bienestar y reputación al máximo"
         elif juego.recursos.dinero < costo_campania:
             estado_campania = f"Faltan ${formato_numero(costo_campania - juego.recursos.dinero)}"
         else:
-            estado_campania = f"Recupera 10 bienestar · ${formato_numero(costo_campania)}"
+            estado_campania = f"Invierte ${formato_numero(costo_campania)}: +5 bienestar y +3 reputación"
         tema.dibujar_texto(pantalla, fuentes.pequena, estado_campania,
                            tema.COLOR_TEXTO_SEC, center=(RECT_BOTON_BIENESTAR.centerx, 590))
         tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_BIENESTAR,
-                           "Campaña bienestar", tema.COLOR_BOTON_OK,
+                           "Campaña de marca", tema.COLOR_BOTON_OK,
                            habilitado=disponible, radio=16)
     tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_MAPA, "Mapa", tema.COLOR_ACENTO, radio=16)
     _dibujar_mini_feed(pantalla, juego)

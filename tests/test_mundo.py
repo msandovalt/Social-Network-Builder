@@ -77,7 +77,7 @@ class TestRequisitos(unittest.TestCase):
         self.assertFalse(reqs["nodo"].cumplido)
         self.assertEqual(reqs["nodo"].etiqueta, self.arbol.nodo_por_id("feed_basico").nombre)
         self.assertFalse(reqs["usuarios"].cumplido)
-        self.assertEqual((reqs["usuarios"].actual, reqs["usuarios"].necesario), (500, 600))
+        self.assertEqual((reqs["usuarios"].actual, reqs["usuarios"].necesario), (500, 1000))
         self.assertTrue(reqs["dinero"].cumplido)
 
     def test_una_region_lejana_no_exige_dinero_porque_aun_no_se_puede_pagar_su_ruta(self):

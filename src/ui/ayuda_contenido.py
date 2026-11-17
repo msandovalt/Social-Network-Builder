@@ -42,7 +42,7 @@ PAGINAS = (
              "Crecen cada ronda hasta la capacidad de tus regiones; para crecer más, expándete."),
             ("Bienestar",
              f"Mide cómo se sienten tus usuarios. Si baja de {UMBRAL_FUGA}, cada ronda se va "
-             f"hasta el {round(FUGA_MAXIMA * 100)} % de ellos. Compra una campaña en el panel para recuperar 10 puntos."),
+             f"hasta el {round(FUGA_MAXIMA * 100)} % de ellos. Desbloquea una campaña de marca para recuperar bienestar y reputación."),
             ("Reputación y engagement",
              "La reputación abre las regiones exigentes y los eventos la afectan; el engagement mide "
              "el tiempo que pasan tus usuarios."),
@@ -52,15 +52,15 @@ PAGINAS = (
         "titulo": "Árbol",
         "puntos": (
             ("Cómo comprar",
-             "Haz clic en un nodo, revisa su detalle y confirma la compra; el aro amarillo marca "
-             "los disponibles."),
+             "Feed, Comunidad, Seguridad, Monetización y Marca ofrecen estilos distintos. Haz clic en un nodo "
+             "para ver su costo y efecto."),
             ("Efecto fijo",
              "Se aplica una vez, en el momento de la compra."),
             ("Interruptor y dial",
              "Se aplican cada ronda: el interruptor mientras esté encendido y el dial según su "
              "valor (0 a 100). Cada cambio muestra su precio y pide confirmación."),
             ("Bifurcación",
-             "Eliges una variante; cambiar a otra tiene un costo que se muestra antes de confirmar."),
+             "Eliges un modelo, como moderación humana o automática. Cambiar de variante tiene un costo que se muestra antes de confirmar."),
         ),
     },
     {
@@ -86,8 +86,8 @@ PAGINAS = (
              f"Cada {round(DURACION_RONDA)} segundos activos se aplican los efectos de tus nodos y "
              "regiones. El tiempo se pausa al abrir el árbol o el mapa."),
             ("Eventos",
-             f"Ocurren al azar (cada {round(INTERVALO_MIN)}–{round(INTERVALO_MAX)}s, prom. {round(INTERVALO_EVENTOS)} segundos). "
-             "Con bienestar alto abundan los positivos; si baja, las crisis."),
+             f"Surge un evento cada {round(INTERVALO_EVENTOS)} segundos en promedio, pero el momento es impredecible. "
+             "Su probabilidad depende de tus métricas; cierra el aviso con un clic."),
             ("Tu seguridad cuenta",
              "Los nodos de seguridad reducen a la mitad las pérdidas de los eventos malos y frenan "
              "su propagación."),

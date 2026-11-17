@@ -65,7 +65,7 @@ def _etiqueta_variante(nombre):
 def lineas_de_efectos(nodo):
     """Textos que describen qué hace el nodo (vacío si no tiene efectos)."""
     if nodo.tipo_control == "bifurcacion":
-        return [f"{_etiqueta_variante(nombre)}: {formatear_efectos(datos.get('efectos', {}))}"
+        return [f"Cada ronda, {_etiqueta_variante(nombre)}: {formatear_efectos(datos.get('efectos', {}))}"
                 for nombre, datos in nodo.variantes.items()]
     if not nodo.efectos:
         return []
@@ -187,7 +187,7 @@ def dibujar_panel_detalle(pantalla, fuentes, nodo, recursos, cambio_pendiente=No
     if estado == "desbloqueado":
         texto_estado, color_estado = "Ya desbloqueado.", tema.COLOR_VERDE
     elif estado == "bloqueado_padre":
-        texto_estado, color_estado = "Primero debes desbloquear el nodo anterior.", tema.COLOR_ROJO
+        texto_estado, color_estado = f"Requiere primero: {nodo.padre.nombre}.", tema.COLOR_ROJO
     elif estado == "bloqueado_dinero":
         falta = nodo.costo - recursos.dinero
         texto_estado, color_estado = f"Te faltan ${formato_numero(falta)} para poder comprarlo.", tema.COLOR_ROJO

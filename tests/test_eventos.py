@@ -262,7 +262,7 @@ class TestPropagacion(unittest.TestCase):
         self.assertTrue(basica.contenido)
         self.assertEqual(basica.regiones, ["sudamerica", "centroamerica", "norteamerica"])
 
-        desbloquear(self.arbol, self.recursos, "seguridad_avanzada")  # -2 saltos más
+        desbloquear(self.arbol, self.recursos, "seguridad_basica", "seguridad_avanzada")  # -2 saltos más
         avanzada = aplicar_evento(self.rumor, self.arbol, self.recursos, self.mundo, self.rng)
         self.assertEqual(avanzada.regiones, ["sudamerica"])
 
