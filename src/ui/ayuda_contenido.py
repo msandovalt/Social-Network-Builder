@@ -23,7 +23,7 @@ PAGINAS = (
         "titulo": "Objetivo",
         "puntos": (
             ("Conquista el planeta",
-             f"Haz que tu red social alcance las {_TOTAL_REGIONES} regiones del planeta: al tomar la última, ganas."),
+             f"Conquista las {_TOTAL_REGIONES} regiones y llena toda la capacidad de usuarios para ganar."),
             ("Cuida a tu comunidad",
              "Una red sana crece más y llega más lejos; si tus usuarios se sienten mal, no podrás "
              "expandirte."),
@@ -37,12 +37,12 @@ PAGINAS = (
         "titulo": "Recursos",
         "puntos": (
             ("Dinero",
-             "Sirve para comprar nodos y pagar rutas del mapa; si queda negativo, pierdes."),
+             "Sirve para comprar nodos y pagar rutas. Cada ronda pagas costos de operación según tus regiones y usuarios; si queda negativo, pierdes."),
             ("Usuarios",
              "Crecen cada ronda hasta la capacidad de tus regiones; para crecer más, expándete."),
             ("Bienestar",
              f"Mide cómo se sienten tus usuarios. Si baja de {UMBRAL_FUGA}, cada ronda se va "
-             f"hasta el {round(FUGA_MAXIMA * 100)} % de ellos."),
+             f"hasta el {round(FUGA_MAXIMA * 100)} % de ellos. Compra una campaña en el panel para recuperar 10 puntos."),
             ("Reputación y engagement",
              "La reputación abre las regiones exigentes y los eventos la afectan; el engagement mide "
              "el tiempo que pasan tus usuarios."),
@@ -58,9 +58,9 @@ PAGINAS = (
              "Se aplica una vez, en el momento de la compra."),
             ("Interruptor y dial",
              "Se aplican cada ronda: el interruptor mientras esté encendido y el dial según su "
-             "valor (0 a 100)."),
+             "valor (0 a 100). Cada cambio muestra su precio y pide confirmación."),
             ("Bifurcación",
-             "Eliges una de dos variantes y puedes cambiarla cuando quieras, con sus ventajas y costos."),
+             "Eliges una variante; cambiar a otra tiene un costo que se muestra antes de confirmar."),
         ),
     },
     {
@@ -75,15 +75,16 @@ PAGINAS = (
             ("Ruta más barata",
              "Al elegir una región lejana, el mapa resalta en amarillo el camino más barato hasta ella."),
             ("Capacidad e ingresos",
-             "Cada región conquistada da ingresos por ronda y sube el máximo de usuarios de tu red."),
+             "Cada región da ingresos y capacidad, pero también aumenta los costos de operación. "
+             "Para ganar, conquista todas las regiones y llena la capacidad de usuarios."),
         ),
     },
     {
         "titulo": "Rondas y eventos",
         "puntos": (
             ("Rondas",
-             f"Cada {round(DURACION_RONDA)} segundos se aplican los efectos de tus nodos y "
-             "regiones, y crecen tus usuarios."),
+             f"Cada {round(DURACION_RONDA)} segundos activos se aplican los efectos de tus nodos y "
+             "regiones. El tiempo se pausa al abrir el árbol o el mapa."),
             ("Eventos",
              f"Cada {round(INTERVALO_EVENTOS)} segundos ocurre un evento aleatorio, bueno o malo. "
              "Cierra el aviso con un clic."),
@@ -91,7 +92,7 @@ PAGINAS = (
              "Los nodos de seguridad reducen a la mitad las pérdidas de los eventos malos y frenan "
              "su propagación."),
             ("Pausa",
-             "El tiempo no corre en el menú, la pausa ni la ayuda."),
+             "El tiempo no corre en el menú, la pausa, la ayuda, el árbol ni el mapa."),
         ),
     },
     {

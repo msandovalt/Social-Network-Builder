@@ -18,7 +18,7 @@ Decisiones de unidades (provisionales, se calibran jugando):
 
 from tree.recursos import efectos_en_puntos
 
-DURACION_RONDA = 10.0  # segundos reales por ronda
+DURACION_RONDA = 25.0  # segundos activos en el panel principal por ronda
 
 UMBRAL_FUGA = 40      # con menos bienestar que esto, los usuarios empiezan a irse
 FUGA_MAXIMA = 0.12    # fracción de usuarios que se va por ronda con bienestar 0
@@ -42,16 +42,34 @@ def avanzar_ronda(arbol, recursos, mundo=None):
     Si hay `mundo`, se suman también los ingresos de sus regiones conquistadas."""
     if mundo is not None:
         recursos.actualizar_limite_usuarios(mundo.capacidad_total())
+    if recursos.esta_en_quiebra():
+        return QUIEBRA
+    if recursos.sufre_exodo():
+        return EXODO
+
     efectos = dict(arbol.efectos_totales_de_la_ronda())
     if mundo is not None:
         for clave, valor in mundo.efectos_totales_de_la_ronda().items():
             efectos[clave] = efectos.get(clave, 0) + valor
+        efectos["dinero"] = efectos.get("dinero", 0) - mundo.costo_operativo(recursos.usuarios)
 
     tasa = recursos.crecimiento + efectos.pop("crecimiento", 0.0)
-    nuevos_usuarios = recursos.usuarios * (tasa - tasa_fuga(recursos.bienestar))
+    usuarios_fijos = efectos.pop("usuarios", 0)
 
-    efectos["usuarios"] = efectos.get("usuarios", 0) + nuevos_usuarios
+    # Primero aplica efectos no demográficos para que el bienestar que dejan
+    # las decisiones de esta ronda afecte la captación y la fuga de inmediato.
     recursos.aplicar_efectos(efectos_en_puntos(efectos))
+
+    # El bienestar bajo reduce la capacidad de captar usuarios. A cero, tanto
+    # las tasas como las bonificaciones recurrentes de usuarios dejan de sumar;
+    # la fuga sigue calculándose sobre la comunidad existente.
+    apoyo_comunidad = min(1.0, max(0.0, recursos.bienestar / UMBRAL_FUGA))
+    tasa_efectiva = max(0.0, tasa) * apoyo_comunidad + min(0.0, tasa)
+    crecimiento = recursos.usuarios * tasa_efectiva
+    usuarios_fijos = (usuarios_fijos * apoyo_comunidad if usuarios_fijos > 0
+                      else usuarios_fijos)
+    fuga = recursos.usuarios * tasa_fuga(recursos.bienestar)
+    recursos.aplicar_efectos({"usuarios": crecimiento + usuarios_fijos - fuga})
 
     if recursos.esta_en_quiebra():
         return QUIEBRA

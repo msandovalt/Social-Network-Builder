@@ -239,7 +239,9 @@ def dibujar_fin(pantalla, fuentes, resultado, resumen, t):
                        tema.COLOR_VERDE if gano else tema.COLOR_TEXTO, center=(ANCHO // 2, 62))
 
     if gano:
-        subtitulo = f"Tu red social conectó a las {resumen.get('total_regiones', 8)} regiones."
+        capacidad = resumen.get("capacidad_usuarios", resumen.get("usuarios", 0))
+        subtitulo = (f"Conectaste las {resumen.get('total_regiones', 8)} regiones y "
+                     f"reuniste {formato_numero(capacidad)} usuarios.")
         color_subtitulo = tema.COLOR_TEXTO
     else:
         subtitulo = MOTIVOS_FIN.get(resultado, "La partida ha finalizado.")

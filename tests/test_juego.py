@@ -30,7 +30,7 @@ from ui.menu_view import (
     RECT_BOTON_ACCESIBILIDAD_MENU, RECT_BOTON_ACCESIBILIDAD_PAUSA,
 )
 from ui.nodo_detalle_view import (
-    RECT_BOTON_COMPRAR, RECT_BOTON_CERRAR, RECT_INTERRUPTOR, RECT_DIAL_MAS,
+    RECT_BOTON_COMPRAR, RECT_BOTON_CANCELAR, RECT_BOTON_CERRAR, RECT_INTERRUPTOR, RECT_DIAL_MAS,
     RECT_DIAL_BARRA, RECT_VARIANTES,
 )
 from ui.tragamonedas_view import RECT_BOTON_ACCION
@@ -131,9 +131,18 @@ class TestArbolEnElJuego(unittest.TestCase):
         self.assertTrue(scroll.desbloqueado)
         self.assertIs(self.juego.nodo_seleccionado, scroll)
 
+        dinero_antes = self.juego.recursos.dinero
         click(self.juego, RECT_INTERRUPTOR)
+        self.assertFalse(scroll.activo)
+        click(self.juego, RECT_BOTON_CANCELAR)
+        self.assertFalse(scroll.activo)
+        self.assertEqual(self.juego.recursos.dinero, dinero_antes)
+
+        click(self.juego, RECT_INTERRUPTOR)
+        click(self.juego, RECT_BOTON_COMPRAR)
         self.assertTrue(scroll.activo)
         click(self.juego, RECT_INTERRUPTOR)
+        click(self.juego, RECT_BOTON_COMPRAR)
         self.assertFalse(scroll.activo)
 
         click(self.juego, RECT_BOTON_CERRAR)
@@ -144,7 +153,10 @@ class TestArbolEnElJuego(unittest.TestCase):
         click(self.juego, centro_de_nodo("feed_algoritmo"))
         click(self.juego, RECT_BOTON_COMPRAR)
         click(self.juego, RECT_DIAL_MAS)
+        self.assertEqual(algoritmo.valor, 0)
+        click(self.juego, RECT_BOTON_COMPRAR)
         click(self.juego, RECT_DIAL_MAS)
+        click(self.juego, RECT_BOTON_COMPRAR)
         self.assertEqual(algoritmo.valor, 20)
 
     def test_dial_se_ajusta_haciendo_clic_en_la_barra(self):
@@ -152,8 +164,10 @@ class TestArbolEnElJuego(unittest.TestCase):
         click(self.juego, centro_de_nodo("feed_algoritmo"))
         click(self.juego, RECT_BOTON_COMPRAR)
         click(self.juego, (RECT_DIAL_BARRA.centerx, RECT_DIAL_BARRA.centery))
+        click(self.juego, RECT_BOTON_COMPRAR)
         self.assertEqual(algoritmo.valor, 50)
         click(self.juego, (RECT_DIAL_BARRA.right - 1, RECT_DIAL_BARRA.centery))
+        click(self.juego, RECT_BOTON_COMPRAR)
         self.assertEqual(algoritmo.valor, 100)
 
     def test_bifurcacion_se_elige_desde_el_panel(self):
@@ -161,6 +175,8 @@ class TestArbolEnElJuego(unittest.TestCase):
         click(self.juego, centro_de_nodo("comunidad_mensajes"))
         click(self.juego, RECT_BOTON_COMPRAR)
         click(self.juego, RECT_VARIANTES[1])
+        self.assertIsNone(mensajes.variante_actual)
+        click(self.juego, RECT_BOTON_COMPRAR)
         self.assertEqual(mensajes.variante_actual, list(mensajes.variantes)[1])
 
     def test_no_se_puede_comprar_si_el_padre_esta_bloqueado(self):
@@ -235,7 +251,7 @@ class TestMapaEnElJuego(unittest.TestCase):
     def test_cada_ronda_las_regiones_conquistadas_aportan_su_ingreso(self):
         dinero = self.juego.recursos.dinero
         self.juego.actualizar(self.juego.rondas.duracion)
-        self.assertEqual(self.juego.recursos.dinero, dinero + 120)
+        self.assertEqual(self.juego.recursos.dinero, dinero + 10)
 
     def test_una_partida_nueva_reinicia_el_mapa(self):
         self.cumplir_requisitos_de_centroamerica()
@@ -499,12 +515,16 @@ class TestVictoria(unittest.TestCase):
         click(self.juego, RECT_BOTON_START)
         click(self.juego, RECT_BOTON_MAPA)
 
-    def test_conquistar_la_ultima_region_gana_la_partida(self):
+    def test_conquistar_ultima_region_exige_llenar_capacidad_para_ganar(self):
         preparar_conquista_total(self.juego)
         self.assertEqual(self.juego.estado, MAPA)  # con 7 de 8 todavía no se gana
         click(self.juego, POSICIONES_REGION["oceania"])
         click(self.juego, RECT_BOTON_EXPANDIR)
         self.assertTrue(self.juego.mundo.todas_conquistadas())
+        self.assertEqual(self.juego.estado, MAPA)
+        self.assertLess(self.juego.recursos.usuarios, self.juego.mundo.capacidad_total())
+        self.juego.recursos.usuarios = self.juego.mundo.capacidad_total()
+        self.juego.actualizar(0.016)
         self.assertEqual(self.juego.estado, FIN)
         self.assertEqual(self.juego.rondas.resultado, VICTORIA)
 
@@ -518,6 +538,7 @@ class TestVictoria(unittest.TestCase):
         preparar_conquista_total(self.juego)
         click(self.juego, POSICIONES_REGION["oceania"])
         click(self.juego, RECT_BOTON_EXPANDIR)
+        self.juego.recursos.usuarios = self.juego.mundo.capacidad_total()
         self.juego.actualizar(0.016)
         self.assertTrue(self.juego.particulas.hay_activas)  # confeti de la victoria
         numero = self.juego.rondas.numero
@@ -535,6 +556,8 @@ class TestVictoria(unittest.TestCase):
         preparar_conquista_total(self.juego)
         click(self.juego, POSICIONES_REGION["oceania"])
         click(self.juego, RECT_BOTON_EXPANDIR)
+        self.juego.recursos.usuarios = self.juego.mundo.capacidad_total()
+        self.juego.actualizar(0.016)
         click(self.juego, RECT_BOTON_NUEVA)
         self.assertEqual(self.juego.estado, PRINCIPAL)
         self.assertEqual(self.juego.mundo.conquistadas(), ["sudamerica"])
@@ -699,6 +722,7 @@ class TestAnimacionesDelJuego(unittest.TestCase):
 
     def test_ganar_en_la_tragamonedas_espera_el_frenado_y_lanza_particulas(self):
         click(self.juego, RECT_BOTON_ACCION)           # jugar
+        self.juego.maquina.posiciones = [0.0, 0.0, 0.0]
         for codigo in (pygame.K_1, pygame.K_2, pygame.K_3):
             tecla(self.juego, codigo)                  # los tres en el símbolo 0 -> dinero
         self.assertEqual(self.juego.maquina.estado, POR_RESOLVER)
@@ -710,7 +734,7 @@ class TestAnimacionesDelJuego(unittest.TestCase):
         self.juego.actualizar(DURACION_ASENTADO)       # ya alineados: se resuelve
         self.assertEqual(self.juego.maquina.estado, RESUELTO)
         self.assertEqual(self.juego.maquina.resultado_tipo, "dinero")
-        self.assertEqual(self.juego.recursos.dinero, 10000 - 500 + 3000)
+        self.assertEqual(self.juego.recursos.dinero, 10000 - 500 + 4000)
         self.assertTrue(self.juego.particulas.hay_activas)
 
 
