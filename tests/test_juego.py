@@ -22,7 +22,7 @@ from ui.accesibilidad_view import RECTS_OPCION
 from ui.ayuda_contenido import INDICE_ACCESIBILIDAD
 from ui.ayuda_view import RECT_BOTON_ABRIR_ACCESIBILIDAD
 from ui.paletas import OPCIONES
-from minijuego.tragamonedas import RESUELTO, POR_RESOLVER, DURACION_ASENTADO
+from minijuego.tragamonedas import GIRANDO, RESUELTO, POR_RESOLVER, DURACION_ASENTADO
 from ui.hub_view import RECT_BOTON_ARBOL, RECT_BOTON_MAPA, RECT_BOTON_VOLVER
 from ui.menu_view import (
     RECT_BOTON_START, RECT_BOTON_REANUDAR, RECT_BOTON_NUEVA, RECT_BOTON_PAUSA,
@@ -253,6 +253,7 @@ class TestMapaEnElJuego(unittest.TestCase):
         self.assertEqual(self.juego.mundo.conquistadas(), ["sudamerica"])
 
     def test_cada_ronda_las_regiones_conquistadas_aportan_su_ingreso(self):
+        self.juego.eventos.intervalo = self.juego.rondas.duracion + 10
         dinero = self.juego.recursos.dinero
         self.juego.actualizar(self.juego.rondas.duracion)
         self.assertEqual(self.juego.recursos.dinero, dinero + 10)
@@ -331,6 +332,26 @@ class TestAyudaEnElJuego(unittest.TestCase):
         click(self.juego, RECT_BOTON_SALIR_PAUSA)
         self.assertFalse(self.juego.corriendo)
 
+    def test_desde_la_pausa_se_vuelve_al_menu_principal_con_partida_nueva(self):
+        from ui.menu_view import RECT_BOTON_MENU_PAUSA
+        click(self.juego, RECT_BOTON_START)
+        self.juego.recursos.dinero = 123
+        tecla(self.juego, pygame.K_ESCAPE)
+        click(self.juego, RECT_BOTON_MENU_PAUSA)
+        self.assertEqual(self.juego.estado, MENU)
+        self.assertTrue(self.juego.corriendo)
+        self.assertEqual(self.juego.recursos.dinero, 10000)
+
+    def test_desde_el_fin_de_partida_se_vuelve_al_menu_principal(self):
+        from ui.resumen_view import RECT_BOTON_MENU_FIN
+        click(self.juego, RECT_BOTON_START)
+        self.juego.recursos.dinero = -500
+        self.juego.actualizar(self.juego.rondas.duracion)
+        self.assertEqual(self.juego.estado, FIN)
+        click(self.juego, RECT_BOTON_MENU_FIN)
+        self.assertEqual(self.juego.estado, MENU)
+        self.assertTrue(self.juego.corriendo)
+
     def test_el_tiempo_no_corre_mientras_se_lee_la_ayuda(self):
         click(self.juego, RECT_BOTON_START)
         click(self.juego, RECT_BOTON_AYUDA_JUEGO)
@@ -340,7 +361,7 @@ class TestAyudaEnElJuego(unittest.TestCase):
 
     def test_el_aviso_de_un_evento_no_se_apaga_mientras_estas_en_la_ayuda(self):
         click(self.juego, RECT_BOTON_START)
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         click(self.juego, RECT_BOTON_AYUDA_JUEGO)
         self.juego.actualizar(DURACION_AVISO * 2)
         tecla(self.juego, pygame.K_ESCAPE)
@@ -573,31 +594,31 @@ class TestEventosEnElJuego(unittest.TestCase):
         self.juego = Juego()
         click(self.juego, RECT_BOTON_START)
 
-    def test_no_hay_evento_antes_de_los_30_segundos(self):
-        self.juego.actualizar(INTERVALO_EVENTOS - 1)
+    def test_no_hay_evento_antes_del_intervalo(self):
+        self.juego.actualizar(self.juego.eventos.intervalo - 0.5)
         self.assertIsNone(self.juego.aviso)
         self.assertEqual(len(self.juego.eventos.historial), 0)
 
-    def test_a_los_30_segundos_ocurre_un_evento_y_se_muestra_el_aviso(self):
-        self.juego.actualizar(INTERVALO_EVENTOS)
+    def test_al_completar_el_intervalo_ocurre_un_evento_y_se_muestra_el_aviso(self):
+        self.juego.actualizar(self.juego.eventos.intervalo)
         self.assertEqual(len(self.juego.eventos.historial), 1)
         self.assertIsNotNone(self.juego.aviso)
         self.assertEqual(self.juego.tiempo_aviso, 0.0)
 
     def test_el_aviso_se_cierra_solo_con_el_tiempo(self):
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         self.juego.actualizar(DURACION_AVISO + 0.1)
         self.assertIsNone(self.juego.aviso)
 
     def test_el_clic_sobre_el_aviso_lo_cierra_sin_activar_lo_de_atras(self):
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         self.assertIsNotNone(self.juego.aviso)
         click(self.juego, RECT_AVISO)
         self.assertIsNone(self.juego.aviso)
         self.assertEqual(self.juego.estado, PRINCIPAL)
 
     def test_el_clic_fuera_del_aviso_funciona_normal(self):
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         click(self.juego, RECT_BOTON_ARBOL)
         self.assertEqual(self.juego.estado, ARBOL)
         self.assertIsNotNone(self.juego.aviso)
@@ -608,25 +629,25 @@ class TestEventosEnElJuego(unittest.TestCase):
         self.assertEqual(len(self.juego.eventos.historial), 0)
 
     def test_el_aviso_no_avanza_en_pausa(self):
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         tecla(self.juego, pygame.K_ESCAPE)
         self.juego.actualizar(DURACION_AVISO * 2)
         self.assertIsNotNone(self.juego.aviso)
 
     def test_el_temporizador_de_eventos_corre_tambien_en_el_arbol_y_el_mapa(self):
         click(self.juego, RECT_BOTON_ARBOL)
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         self.assertEqual(len(self.juego.eventos.historial), 1)
 
     def test_una_partida_nueva_reinicia_los_eventos(self):
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         self.juego.nueva_partida()
         self.assertIsNone(self.juego.aviso)
         self.assertEqual(self.juego.eventos.historial, [])
         self.assertEqual(self.juego.eventos.acumulado, 0.0)
 
     def test_al_terminar_la_partida_se_quita_el_aviso(self):
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         self.juego.recursos.dinero = -50000
         self.juego.actualizar(self.juego.rondas.duracion)
         self.assertEqual(self.juego.estado, FIN)
@@ -667,7 +688,7 @@ class TestBienestarEnElJuego(unittest.TestCase):
         self.assertEqual(self.juego.aviso.evento.id, "alerta_bienestar")
 
     def test_la_alerta_no_pisa_un_evento_que_se_esta_mostrando(self):
-        self.juego.actualizar(INTERVALO_EVENTOS)
+        self.juego.actualizar(self.juego.eventos.intervalo)
         evento = self.juego.aviso
         self.juego.recursos.bienestar = 5
         self.juego.actualizar(0.016)
@@ -741,6 +762,34 @@ class TestAnimacionesDelJuego(unittest.TestCase):
         self.assertEqual(self.juego.recursos.dinero, 10000 - 500 + 4000)
         self.assertTrue(self.juego.particulas.hay_activas)
 
+    def test_cambio_de_recursos_emite_texto_flotante(self):
+        self.assertFalse(self.juego.particulas.hay_textos_activos)
+        self.juego.recursos.dinero += 1500
+        self.juego.actualizar(0.016)
+        self.assertTrue(self.juego.particulas.hay_textos_activos)
+        self.assertEqual(self.juego.particulas.textos[-1].texto, "+$1.500")
+
+    def test_clic_en_la_palanca_inicia_la_tragamonedas(self):
+        from ui.tragamonedas_view import RECT_PALANCA, progreso_premio
+        click(self.juego, RECT_PALANCA)
+        self.assertEqual(self.juego.maquina.estado, GIRANDO)
+        self.juego.maquina.posiciones = [0.0, 0.0, 0.0]
+        tecla(self.juego, pygame.K_1)  # detiene el primer carrete en símbolo 0 ("dinero")
+        self.assertEqual(progreso_premio(self.juego.maquina, "dinero"), 1)
+        tecla(self.juego, pygame.K_2)  # detiene el segundo carrete también en "dinero"
+        self.assertEqual(progreso_premio(self.juego.maquina, "dinero"), 2)
+        self.assertEqual(progreso_premio(self.juego.maquina, "usuarios"), 0)
+
+    def test_mini_feed_reacciona_al_bienestar_y_nodos(self):
+        from ui.hub_view import generar_comentarios_comunidad
+        self.juego.recursos.bienestar = 20
+        comentarios_bajos = generar_comentarios_comunidad(self.juego)
+        self.assertTrue(any(tono == "negativo" for _, _, tono in comentarios_bajos))
+
+        self.juego.recursos.bienestar = 85
+        comentarios_altos = generar_comentarios_comunidad(self.juego)
+        self.assertTrue(any(tono == "positivo" for _, _, tono in comentarios_altos))
+
 
 class TestFinDePartida(unittest.TestCase):
     def setUp(self):
@@ -760,6 +809,123 @@ class TestFinDePartida(unittest.TestCase):
         self.assertEqual(self.juego.recursos.dinero, 10000)
         self.assertEqual(self.juego.rondas.numero, 1)
         self.assertTrue(nodo(self.juego, "feed").desbloqueado)
+
+
+class TestMandoXbox(unittest.TestCase):
+    def setUp(self):
+        self.juego = Juego()
+
+    def _boton(self, boton):
+        self.juego.manejar_evento(pygame.event.Event(pygame.JOYBUTTONDOWN, button=boton))
+
+    def test_mando_inicia_juego_gira_y_frena_carretes_y_cambia_pantallas(self):
+        from mando import BOTON_A, BOTON_X, BOTON_Y, BOTON_B, BOTON_LB, BOTON_RB, BOTON_START
+        # Desde el menú, colocar cursor sobre Iniciar y pulsar A inicia la partida
+        self.juego.mando.x, self.juego.mando.y = RECT_BOTON_START.center
+        self._boton(BOTON_A)
+        self.assertEqual(self.juego.estado, PRINCIPAL)
+        self.assertTrue(self.juego.mando.activo)
+
+        # Si el cursor está sobre el botón de Pausa, pulsar A abre la Pausa sin activar la tragamonedas
+        self.juego.mando.x, self.juego.mando.y = RECT_BOTON_PAUSA.center
+        self._boton(BOTON_A)
+        self.assertEqual(self.juego.estado, PAUSA)
+        self.assertEqual(self.juego.maquina.estado, "inactivo")
+        self._boton(BOTON_START)
+        self.assertEqual(self.juego.estado, PRINCIPAL)
+
+        # Para iniciar la tragamonedas con A hay que estar sobre el botón Jugar
+        self.juego.mando.x, self.juego.mando.y = RECT_BOTON_ACCION.center
+        self._boton(BOTON_A)
+        self.assertEqual(self.juego.maquina.estado, GIRANDO)
+        self._boton(BOTON_X)
+        self._boton(BOTON_Y)
+        self._boton(BOTON_B)
+        self.assertEqual(self.juego.maquina.estado, POR_RESOLVER)
+
+        # RB y LB cambian entre Principal, Mapa y Árbol
+        self._boton(BOTON_RB)
+        self.assertEqual(self.juego.estado, MAPA)
+        self._boton(BOTON_LB)
+        self.assertEqual(self.juego.estado, PRINCIPAL)
+        self._boton(BOTON_LB)
+        self.assertEqual(self.juego.estado, ARBOL)
+
+        # Start pausa y reanuda
+        self._boton(BOTON_START)
+        self.assertEqual(self.juego.estado, PAUSA)
+        self._boton(BOTON_START)
+        self.assertEqual(self.juego.estado, ARBOL)
+
+    def test_cruceta_mueve_el_cursor_virtual_y_mouse_lo_oculta(self):
+        x0 = self.juego.mando.x
+        self.juego.manejar_evento(pygame.event.Event(pygame.JOYHATMOTION, value=(1, 0)))
+        self.juego.actualizar(0.2)
+        self.assertGreater(self.juego.mando.x, x0)
+        self.assertTrue(self.juego.mando.activo)
+
+        self.juego.manejar_evento(pygame.event.Event(pygame.MOUSEMOTION, pos=(100, 100)))
+        self.assertFalse(self.juego.mando.activo)
+
+
+class TestMultijugador(unittest.TestCase):
+    def setUp(self):
+        self.host = Juego()
+        self.cliente = Juego()
+
+    def tearDown(self):
+        self.host.multi.cerrar()
+        self.cliente.multi.cerrar()
+
+    def test_codificar_y_decodificar_codigo_sala(self):
+        from multijugador import codificar_sala, decodificar_sala, PUERTO_BASE
+        codigo = codificar_sala("192.168.1.45", PUERTO_BASE + 2)
+        self.assertEqual(len(codigo), 4)
+        ip, puerto = decodificar_sala(codigo, "192.168.0.10")
+        self.assertEqual(ip, "192.168.1.45")
+        self.assertEqual(puerto, PUERTO_BASE + 2)
+
+    def test_crear_sala_unirse_y_sincronizar_en_vivo(self):
+        import time
+        from ui.menu_view import RECT_BOTON_MULTIJUGADOR
+        from ui.multijugador_view import RECT_BOTON_CREAR_SALA, RECT_BOTON_INICIAR_MULTI
+        from juego import MULTIJUGADOR
+
+        click(self.host, RECT_BOTON_MULTIJUGADOR)
+        self.assertEqual(self.host.estado, MULTIJUGADOR)
+        click(self.host, RECT_BOTON_CREAR_SALA)
+        self.assertTrue(self.host.multi.activo)
+        self.assertEqual(len(self.host.multi.codigo_sala), 4)
+
+        # El cliente se une directamente por localhost al puerto del host
+        self.cliente.multi.unirse_sala(f"127.0.0.1:{self.host.multi.puerto}")
+        for _ in range(30):
+            if self.host.multi.conectado and self.cliente.multi.conectado:
+                break
+            time.sleep(0.05)
+
+        self.assertTrue(self.host.multi.conectado)
+        self.assertTrue(self.cliente.multi.conectado)
+
+        # El host inicia la carrera 1v1
+        click(self.host, RECT_BOTON_INICIAR_MULTI)
+        self.assertEqual(self.host.estado, PRINCIPAL)
+
+        for _ in range(20):
+            self.cliente.actualizar(0.05)
+            if self.cliente.estado == PRINCIPAL:
+                break
+            time.sleep(0.02)
+        self.assertEqual(self.cliente.estado, PRINCIPAL)
+
+        # El host conquista una región más y sincroniza
+        self.host.mundo.regiones["centroamerica"].conquistada = True
+        self.host.multi.enviar_estado_inmediato(self.host)
+        for _ in range(20):
+            if self.cliente.multi.estado_rival.get("regiones") == 2:
+                break
+            time.sleep(0.03)
+        self.assertEqual(self.cliente.multi.estado_rival.get("regiones"), 2)
 
 
 if __name__ == "__main__":

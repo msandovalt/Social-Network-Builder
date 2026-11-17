@@ -26,8 +26,9 @@ RECT_PANEL_ESTADISTICAS = pygame.Rect(772, 224, 460, 356)
 RECT_GRAFICO = RECT_PANEL_GRAFICO
 RECT_ESTADISTICAS = RECT_PANEL_ESTADISTICAS
 
-RECT_BOTON_NUEVA = pygame.Rect(ANCHO // 2 - 280, 614, 260, 56)
-RECT_BOTON_SALIR = pygame.Rect(ANCHO // 2 + 20, 614, 260, 56)
+RECT_BOTON_NUEVA = pygame.Rect(ANCHO // 2 - 400, 614, 240, 56)
+RECT_BOTON_MENU_FIN = pygame.Rect(ANCHO // 2 - 120, 614, 240, 56)
+RECT_BOTON_SALIR = pygame.Rect(ANCHO // 2 + 160, 614, 240, 56)
 
 UMBRAL_BIENESTAR_SANO = 60  # con este bienestar o más, la victoria se considera "sana"
 MENSAJE_VICTORIA_SANA = "Y lo lograste cuidando el bienestar de tu comunidad. Así se construye una red sana."
@@ -46,6 +47,7 @@ MOTIVOS_FIN = {
     QUIEBRA: "Quiebra financiera: te quedaste sin dinero para sostener la red.",
     EXODO: "Saturación y éxodo: todos tus usuarios abandonaron la plataforma.",
     SATURACION: "Saturación total de servidores: la infraestructura colapsó bajo la demanda.",
+    "derrota_rival": "Tu rival conquistó las 8 regiones del planeta antes que tú en la carrera 1 vs 1.",
 }
 
 
@@ -266,4 +268,5 @@ def dibujar_fin(pantalla, fuentes, resultado, resumen, t):
     _dibujar_estadisticas(pantalla, fuentes, resultado, resumen)
 
     tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_NUEVA, "Nueva partida", tema.COLOR_ACENTO, radio=14)
+    tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_MENU_FIN, "Menú principal", tema.COLOR_PANEL_CLARO, radio=14)
     tema.dibujar_boton(pantalla, fuentes.boton, RECT_BOTON_SALIR, "Salir", tema.COLOR_BOTON_PELIGRO, radio=14)

@@ -37,6 +37,29 @@ def tasa_fuga(bienestar):
     return FUGA_MAXIMA * (UMBRAL_FUGA - bienestar) / UMBRAL_FUGA
 
 
+def balance_por_ronda(arbol, recursos, mundo=None):
+    """Calcula el cambio neto en puntos que producirá la próxima ronda para cada
+    recurso visible, sin modificar `recursos`."""
+    efectos = dict(arbol.efectos_totales_de_la_ronda())
+    if mundo is not None:
+        for clave, valor in mundo.efectos_totales_de_la_ronda().items():
+            efectos[clave] = efectos.get(clave, 0) + valor
+        efectos["dinero"] = efectos.get("dinero", 0) - mundo.costo_operativo(recursos.usuarios)
+
+    tasa = recursos.crecimiento + efectos.pop("crecimiento", 0.0)
+    usuarios_fijos = efectos.pop("usuarios", 0)
+    resultado = efectos_en_puntos(efectos)
+
+    bienestar_proyectado = max(0.0, min(100.0, recursos.bienestar + resultado.get("bienestar", 0.0)))
+    apoyo_comunidad = min(1.0, max(0.0, bienestar_proyectado / UMBRAL_FUGA))
+    tasa_efectiva = max(0.0, tasa) * apoyo_comunidad + min(0.0, tasa)
+    crecimiento = recursos.usuarios * tasa_efectiva
+    usuarios_fijos_ef = usuarios_fijos * apoyo_comunidad if usuarios_fijos > 0 else usuarios_fijos
+    fuga = recursos.usuarios * tasa_fuga(bienestar_proyectado)
+    resultado["usuarios"] = crecimiento + usuarios_fijos_ef - fuga
+    return resultado
+
+
 def avanzar_ronda(arbol, recursos, mundo=None):
     """Aplica una ronda completa. Devuelve QUIEBRA, EXODO o None.
     Si hay `mundo`, se suman también los ingresos de sus regiones conquistadas."""

@@ -26,6 +26,7 @@ def main():
     reloj = pygame.time.Clock()
 
     juego = Juego(pantalla, crear_fuentes(), Ajustes())  # Ajustes recuerda la paleta elegida
+    juego.audio.iniciar_musica_ambiente()
 
     while juego.corriendo:
         dt = reloj.tick(FPS) / 1000.0

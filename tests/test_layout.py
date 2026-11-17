@@ -45,16 +45,17 @@ class TestLayoutArbol(unittest.TestCase):
 
 class TestLayoutHub(unittest.TestCase):
     def test_los_botones_caben_en_pantalla(self):
-        for nombre in ("RECT_BOTON_ARBOL", "RECT_BOTON_MAPA", "RECT_BOTON_VOLVER", "RECT_AREA_MINIJUEGO"):
+        for nombre in ("RECT_BOTON_ARBOL", "RECT_BOTON_MAPA", "RECT_MINI_FEED", "RECT_BOTON_VOLVER", "RECT_AREA_MINIJUEGO"):
             self.assertTrue(PANTALLA.contains(getattr(hub_view, nombre)), nombre)
-        for nombre in ("RECT_BOTON_START", "RECT_BOTON_AYUDA_MENU", "RECT_BOTON_PAUSA", "RECT_BOTON_AYUDA_JUEGO",
+        for nombre in ("RECT_BOTON_START", "RECT_BOTON_MULTIJUGADOR", "RECT_BOTON_AYUDA_MENU",
+                       "RECT_BOTON_PAUSA", "RECT_BOTON_AYUDA_JUEGO",
                        "RECT_BOTON_ACCESIBILIDAD_MENU", "RECT_BOTON_ACCESIBILIDAD_PAUSA",
                        "RECT_BOTON_REANUDAR", "RECT_BOTON_AYUDA_PAUSA", "RECT_BOTON_SALIR_PAUSA",
                        "RECT_BOTON_SALIR", "RECT_BOTON_NUEVA"):
             self.assertTrue(PANTALLA.contains(getattr(menu_view, nombre)), nombre)
 
     def test_el_hub_no_se_superpone_con_el_encabezado_ni_entre_si(self):
-        rects = [hub_view.RECT_AREA_MINIJUEGO, hub_view.RECT_BOTON_ARBOL, hub_view.RECT_BOTON_MAPA]
+        rects = [hub_view.RECT_AREA_MINIJUEGO, hub_view.RECT_BOTON_ARBOL, hub_view.RECT_MINI_FEED, hub_view.RECT_BOTON_MAPA]
         self.assertEqual(hay_solapes(rects), [])
         for rect in rects:
             self.assertGreaterEqual(rect.top, Y_INICIO_CONTENIDO)
@@ -74,18 +75,21 @@ class TestLayoutHub(unittest.TestCase):
 
     def test_los_botones_de_pausa_y_fin_no_se_superponen(self):
         pausa = [menu_view.RECT_BOTON_REANUDAR, menu_view.RECT_BOTON_AYUDA_PAUSA,
-                 menu_view.RECT_BOTON_ACCESIBILIDAD_PAUSA, menu_view.RECT_BOTON_SALIR_PAUSA]
+                 menu_view.RECT_BOTON_ACCESIBILIDAD_PAUSA, menu_view.RECT_BOTON_MENU_PAUSA,
+                 menu_view.RECT_BOTON_SALIR_PAUSA]
         self.assertEqual(hay_solapes(pausa), [])
         self.assertEqual(hay_solapes([menu_view.RECT_BOTON_NUEVA, menu_view.RECT_BOTON_SALIR]), [])
 
     def test_los_botones_de_la_pausa_caben_dentro_de_su_panel(self):
         panel = pygame.Rect(ANCHO // 2 - 200, 150, 400, 420)
         for rect in (menu_view.RECT_BOTON_REANUDAR, menu_view.RECT_BOTON_AYUDA_PAUSA,
-                     menu_view.RECT_BOTON_ACCESIBILIDAD_PAUSA, menu_view.RECT_BOTON_SALIR_PAUSA):
+                     menu_view.RECT_BOTON_ACCESIBILIDAD_PAUSA, menu_view.RECT_BOTON_MENU_PAUSA,
+                     menu_view.RECT_BOTON_SALIR_PAUSA):
             self.assertTrue(panel.contains(rect))
 
     def test_los_botones_del_menu_no_se_superponen(self):
-        self.assertEqual(hay_solapes([menu_view.RECT_BOTON_START, menu_view.RECT_BOTON_AYUDA_MENU,
+        self.assertEqual(hay_solapes([menu_view.RECT_BOTON_START, menu_view.RECT_BOTON_MULTIJUGADOR,
+                                      menu_view.RECT_BOTON_AYUDA_MENU,
                                       menu_view.RECT_BOTON_ACCESIBILIDAD_MENU]), [])
 
     def test_el_boton_de_ayuda_no_pisa_la_pausa_ni_las_tarjetas(self):
@@ -98,7 +102,7 @@ class TestLayoutHub(unittest.TestCase):
 class TestLayoutTragamonedas(unittest.TestCase):
     def test_carretes_y_boton_caben_dentro_del_area_sin_superponerse(self):
         area = hub_view.RECT_AREA_MINIJUEGO
-        elementos = list(slot.RECTS_REEL) + [slot.RECT_BOTON_ACCION]
+        elementos = list(slot.RECTS_REEL) + list(slot.RECTS_PREMIO) + [slot.RECT_BOTON_ACCION, slot.RECT_PALANCA]
         for rect in elementos:
             self.assertTrue(area.contains(rect))
         self.assertEqual(hay_solapes(elementos), [])
@@ -157,6 +161,21 @@ class TestLayoutMapa(unittest.TestCase):
 
     def test_el_boton_volver_no_pisa_el_mapa(self):
         self.assertFalse(hub_view.RECT_BOTON_VOLVER.colliderect(mapa_view.RECT_MAPA))
+
+    def test_continentes_2d_y_orden_geografico_real(self):
+        self.assertEqual(set(mapa_view._CONTINENTES_2D), set(self.mundo.regiones))
+        for id_reg, poligonos in mapa_view._CONTINENTES_2D.items():
+            for poly in poligonos:
+                for px, py in poly:
+                    self.assertTrue(mapa_view.RECT_OCEANO.collidepoint(px, py), (id_reg, px, py))
+        # Orden longitudinal (oeste -> este) y latitudinal (norte -> sur)
+        self.assertLess(self.centros["norteamerica"][1], self.centros["centroamerica"][1])
+        self.assertLess(self.centros["centroamerica"][1], self.centros["sudamerica"][1])
+        self.assertLess(self.centros["sudamerica"][0], self.centros["africa"][0])
+        self.assertLess(self.centros["europa"][1], self.centros["africa"][1])
+        self.assertLess(self.centros["europa"][0], self.centros["medio_oriente"][0])
+        self.assertLess(self.centros["medio_oriente"][0], self.centros["asia"][0])
+        self.assertLess(self.centros["asia"][1], self.centros["oceania"][1])
 
 
 class TestLayoutAyuda(unittest.TestCase):
@@ -244,17 +263,38 @@ class TestLayoutResumen(unittest.TestCase):
         panel = resumen_view.RECT_PANEL_RESUMEN
         self.assertTrue(PANTALLA.contains(panel))
         for sub in (resumen_view.RECT_GRAFICO, resumen_view.RECT_ESTADISTICAS,
-                    resumen_view.RECT_BOTON_NUEVA, resumen_view.RECT_BOTON_SALIR):
+                    resumen_view.RECT_BOTON_NUEVA, resumen_view.RECT_BOTON_MENU_FIN,
+                    resumen_view.RECT_BOTON_SALIR):
             self.assertTrue(panel.contains(sub), sub)
         self.assertEqual(
             hay_solapes([
                 resumen_view.RECT_GRAFICO,
                 resumen_view.RECT_ESTADISTICAS,
                 resumen_view.RECT_BOTON_NUEVA,
+                resumen_view.RECT_BOTON_MENU_FIN,
                 resumen_view.RECT_BOTON_SALIR,
             ]),
             [],
         )
+
+
+class TestLayoutMultijugador(unittest.TestCase):
+    def test_panel_y_controles_caben_sin_superponerse(self):
+        from ui import multijugador_view as mv
+        self.assertTrue(PANTALLA.contains(mv.RECT_PANEL_MULTI))
+        self.assertFalse(mv.RECT_CAJA_HOST.colliderect(mv.RECT_CAJA_CLIENTE))
+        controles = [
+            mv.RECT_BOTON_CREAR_SALA,
+            mv.RECT_BOTON_ABRIR_VENTANA,
+            mv.RECT_CAMPO_CODIGO,
+            mv.RECT_BOTON_UNIRSE_SALA,
+            mv.RECT_BOTON_DETECTAR_SALA,
+            mv.RECT_BOTON_INICIAR_MULTI,
+        ]
+        for rect in controles:
+            self.assertTrue(mv.RECT_PANEL_MULTI.contains(rect), rect)
+        self.assertTrue(mv.RECT_CAJA_HOST.contains(mv.RECT_BOTON_ABRIR_VENTANA))
+        self.assertEqual(hay_solapes(controles), [])
 
 
 if __name__ == "__main__":

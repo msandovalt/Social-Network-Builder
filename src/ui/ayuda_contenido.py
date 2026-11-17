@@ -9,7 +9,7 @@ Cada página es un diccionario con `titulo` y `puntos`, una lista de
 y textos de hasta ~150 caracteres.
 """
 
-from eventos.gestor import INTERVALO_EVENTOS
+from eventos.gestor import INTERVALO_EVENTOS, INTERVALO_MIN, INTERVALO_MAX
 from mapa.mundo import Mundo
 from tree.ronda import DURACION_RONDA, UMBRAL_FUGA, FUGA_MAXIMA
 
